@@ -1,0 +1,5 @@
+{
+  "monzo": {
+    "host": "https://api.monzo.com"
+  }
+}
