@@ -12,5 +12,15 @@
   * Spotify
   * Uber
   * GitHub commits
+  * Mobile App
+    * End of day summary (sleep, diet, etc)
+    * Phone usage (i.e. does screen time affect sleep) 
 * Influx storage
 * Dockerise (persist influx data)
+
+### Names
+
+DataDiary
+LifeLog
+DataDump
+DayDump
