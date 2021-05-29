@@ -15,6 +15,9 @@
                 <li class="nav-item">
                     <router-link class="nav-link" active-class="active" :to="{ name: 'query'}">Query</router-link>
                 </li>
+                <li class="nav-item">
+                    <router-link class="nav-link" active-class="active" :to="{ name: 'config'}">Config</router-link>
+                </li>
             </ul>
         </div>
         <!-- offset to centre navs -->

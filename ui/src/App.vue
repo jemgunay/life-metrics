@@ -3,7 +3,7 @@
         <NavBar/>
         <div class="container">
             <div class="row">
-                <DayLogPage/>
+                <router-view />
             </div>
         </div>
     </div>
@@ -11,13 +11,11 @@
 
 <script>
 import NavBar from "./components/NavBar.vue";
-import DayLogPage from "./components/pages/DayLogPage.vue";
 
 export default {
     name: "App",
     components: {
-        NavBar,
-        DayLogPage
+        NavBar
     }
 };
 </script>

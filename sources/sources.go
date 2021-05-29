@@ -9,7 +9,7 @@ type Source interface {
 }
 
 type Result struct {
-	Time time.Time
-	Value float64
-	Metadata interface{}
+	Time   time.Time
+	Tags   map[string]string
+	Fields map[string]interface{}
 }
