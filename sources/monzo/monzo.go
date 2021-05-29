@@ -20,7 +20,6 @@ func (m *Monzo) Name() string {
 }
 
 func (m *Monzo) Collect(start, end time.Time) ([]sources.Result, error) {
-
 	return nil, nil
 }
 

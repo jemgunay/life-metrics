@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jemgunay/life-metrics/api"
 	"github.com/jemgunay/life-metrics/config"
 	"github.com/jemgunay/life-metrics/influx"
 	"github.com/jemgunay/life-metrics/sources"
@@ -25,11 +26,11 @@ func main() {
 		return
 	}
 
+	// configure the API
+	api := api.New()
 	// configure data sources
-	monzoSource := monzo.New(conf.Monzo)
-
-	dataSources := map[string]sources.Source{
-		"monzo": monzoSource,
+	dataSources := []sources.Source{
+		 monzo.New(conf.Monzo),
 	}
 
 	// influx storage
@@ -43,6 +44,8 @@ func main() {
 		ticker := time.NewTicker(*pollInterval)
 		for {
 			select {
+			case logPayload := <-api.Updates():
+				influxRequester.Write("day_log", logPayload)
 			case <-pollChan:
 			case <-ticker.C:
 			}
@@ -50,30 +53,39 @@ func main() {
 			// perform collection
 			wg := &sync.WaitGroup{}
 			wg.Add(len(dataSources))
-			for sourceName, sourceType := range dataSources {
+			for _, source := range dataSources {
 				go func() {
 					defer wg.Done()
 
 					// perform source collection
-					log.Printf("collecting from source: %s", sourceName)
-					results, err := sourceType.Collect(startTime, endTime)
+					log.Printf("collecting from source: %s", source.Name())
+					results, err := source.Collect(startTime, endTime)
 					if err != nil {
 						log.Printf("source collection failed: %s", err)
 						return
 					}
 
-					influxRequester.Write(results)
+					influxRequester.Write(source.Name(), results...)
 				}()
 			}
 		}
 	}()
 
 	http.HandleFunc("/health", healthHandler)
-	http.HandleFunc("/flush", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/api/flush", func(w http.ResponseWriter, r *http.Request) {
 		pollChan <- struct{}{}
 	})
+	http.HandleFunc("/api", enableCORS(api.Handler))
+	log.Printf("HTTP server starting on port %d", *port)
 	err = http.ListenAndServe(":"+strconv.Itoa(*port), nil)
 	log.Printf("HTTP server shut down: %s", err)
+}
+
+func enableCORS(f http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		f(w, r)
+	}
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {

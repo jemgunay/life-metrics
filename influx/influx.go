@@ -2,7 +2,6 @@ package influx
 
 import (
 	"log"
-	"time"
 
 	"github.com/influxdata/influxdb-client-go/v2"
 	influxdbapi "github.com/influxdata/influxdb-client-go/v2/api"
@@ -17,9 +16,9 @@ type Requester struct {
 
 func New() Requester {
 	const (
-		org       = "jem"
-		bucket    = "life-metrics"
-		authToken = ""
+		org       = "home"
+		bucket    = "life"
+		authToken = "***REMOVED***"
 	)
 	client := influxdb2.NewClient("http://localhost:8086", authToken)
 	return Requester{
@@ -28,16 +27,17 @@ func New() Requester {
 	}
 }
 
-func (r Requester) Write(results []sources.Result) {
-	// TODO: write to influx
+func (r Requester) Write(measurement string, results ...sources.Result) {
 	log.Printf("%+v", results)
 	// Create point using full params constructor
-	p := influxdb2.NewPoint(
-		"stat",
-		map[string]string{"unit": "temperature"},
-		map[string]interface{}{"avg": 24.5, "max": 45.0},
-		time.Now().UTC(),
-	)
+	for _, result := range results {
+		p := influxdb2.NewPoint(
+			measurement,
+			result.Tags,
+			result.Fields,
+			result.Time,
+		)
 
-	r.writeClient.WritePoint(p)
+		r.writeClient.WritePoint(p)
+	}
 }
