@@ -4,7 +4,9 @@ import (
 	"flag"
 	"log"
 	"net/http"
+	"os/exec"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -17,10 +19,12 @@ import (
 
 func main() {
 	port := flag.Int("port", 8080, "HTTP server port")
+	configFile := flag.String("config", "LOCAL.json", "config file")
+	staticContentDir := flag.String("static_dir", "build/ui", "static UI assets dir")
 	pollInterval := flag.Duration("poll_interval", time.Minute*10, "how often to poll the sources")
 	flag.Parse()
 
-	conf, err := config.New()
+	conf, err := config.New(*configFile)
 	if err != nil {
 		log.Printf("failed to read config: %s", err)
 		return
@@ -31,6 +35,13 @@ func main() {
 	// configure data sources
 	dataSources := []sources.Source{
 		 monzo.New(conf.Monzo),
+	}
+
+	out, err := exec.Command("ls").Output()
+	if err != nil {
+		log.Printf("exec error: %s\n", err)
+	} else {
+		log.Println("Command Successfully Executed:", string(out))
 	}
 
 	// influx storage
@@ -71,11 +82,27 @@ func main() {
 		}
 	}()
 
+	// define handlers
 	http.HandleFunc("/health", healthHandler)
 	http.HandleFunc("/api/flush", func(w http.ResponseWriter, r *http.Request) {
 		pollChan <- struct{}{}
 	})
 	http.HandleFunc("/api", enableCORS(api.Handler))
+
+	// define file server
+	fileServerRoutes := []string{"/js/", "/css/", "/fonts/", "/favicon.ico"}
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		for _, route := range fileServerRoutes {
+			if strings.HasPrefix(r.URL.Path, route) {
+				// serve static content
+				http.ServeFile(w, r, *staticContentDir + r.URL.Path)
+				return
+			}
+		}
+		// serve Vue's index.html
+		http.ServeFile(w, r, *staticContentDir + "/index.html")
+	})
+
 	log.Printf("HTTP server starting on port %d", *port)
 	err = http.ListenAndServe(":"+strconv.Itoa(*port), nil)
 	log.Printf("HTTP server shut down: %s", err)
@@ -88,6 +115,6 @@ func enableCORS(f http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func healthHandler(w http.ResponseWriter, r *http.Request) {
+func healthHandler(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }

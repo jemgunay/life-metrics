@@ -2,29 +2,28 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/jemgunay/life-metrics/sources"
 )
 
 type request struct {
-	Date    time.Time              `json:"date"`
-	Metrics map[string]interface{} `json:"metrics"`
-	Notes   string                 `json:"notes"`
+	Date    time.Time `json:"date"`
+	Metrics metrics   `json:"metrics"`
+	Notes   string    `json:"notes"`
 }
 
-var permittedMetrics = [...]string{
-	"general_mood",
-	"work_mood",
-	"water_intake",
-	"sleep_quality",
-	"exercise",
-	"meditation",
+type metrics struct {
+	GeneralMood  int  `json:"general_mood"`
+	WorkMood     int  `json:"work_mood"`
+	DietQuality  int  `json:"diet_quality"`
+	WaterIntake  int  `json:"water_intake"`
+	SleepQuality int  `json:"sleep_quality"`
+	Exercise     bool `json:"exercise"`
+	Meditation   bool `json:"meditation"`
 }
 
 type API struct {
@@ -60,54 +59,57 @@ func (a API) Handler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type result struct {
+	fields     map[string]interface{}
+	scoreValue int
+	scoreMax   int
+}
+
+func newResult(notes string) result {
+	return result{
+		fields: map[string]interface{}{
+			"notes":           notes,
+			"submission_date": time.Now(),
+		},
+	}
+}
+
+func (r *result) calcHealth() {
+	r.fields["score_value"] = r.scoreValue
+	r.fields["score_max"] = r.scoreMax
+	r.fields["score_health"] = float64(r.scoreValue / r.scoreMax * 100)
+}
+
+func (r *result) addInt(name string, value int) {
+	r.fields[name] = value
+	r.scoreValue += value
+	r.scoreMax += 10
+}
+
+func (r *result) addBool(name string, value bool) {
+	r.fields[name] = value
+	if value {
+		r.scoreValue += 1
+	}
+	r.scoreMax += 1
+}
+
 func (a API) process(req request) error {
-	// validate metric fields
-	if len(req.Metrics) != len(permittedMetrics) {
-		return fmt.Errorf("expected %d metric fields", len(permittedMetrics))
-	}
+	res := newResult(req.Notes)
 
-	var (
-		tags       = make(map[string]string)
-		scoreValue int
-		scoreMax   int
-	)
-	for _, metricName := range permittedMetrics {
-		rawMetric, ok := req.Metrics[metricName]
-		if !ok {
-			return fmt.Errorf("expected %s metric field", metricName)
-		}
-
-		switch metric := rawMetric.(type) {
-		case int:
-			if metric > 10 {
-				return fmt.Errorf("integer metric %s field value is greater than 10", metricName)
-			} else if metric < 0 {
-				return fmt.Errorf("integer metric %s field value is less than 0", metricName)
-			}
-			tags[metricName] = strconv.Itoa(metric)
-			scoreValue += metric
-			scoreMax += 10
-		case bool:
-			tags[metricName] = strconv.FormatBool(metric)
-			if metric {
-				scoreValue += 1
-			}
-			scoreMax += 1
-		default:
-			return fmt.Errorf("unexpected metric type for %s, %v", metricName, metric)
-		}
-	}
+	// add all request fields to the result
+	res.addInt("general_mood", req.Metrics.GeneralMood)
+	res.addInt("work_mood", req.Metrics.WorkMood)
+	res.addInt("diet_quality", req.Metrics.DietQuality)
+	res.addInt("water_intake", req.Metrics.WaterIntake)
+	res.addInt("sleep_quality", req.Metrics.SleepQuality)
+	res.addBool("exercise", req.Metrics.Exercise)
+	res.addBool("meditation", req.Metrics.Meditation)
 
 	// aggregate tags and stringify values
 	a.updates <- sources.Result{
-		Time: req.Date,
-		Tags: tags,
-		Fields: map[string]interface{}{
-			"notes":        req.Notes,
-			"score_value":  scoreValue,
-			"score_max":    scoreMax,
-			"score_health": float64(scoreValue / scoreMax * 100),
-		},
+		Time:   req.Date,
+		Fields: res.fields,
 	}
 
 	return nil
