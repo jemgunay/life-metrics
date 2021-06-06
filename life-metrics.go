@@ -71,6 +71,20 @@ func main() {
 		}
 	}()
 
+	// define file server
+	staticFileHandler := http.StripPrefix("/static/", http.FileServer(http.Dir("static/")))
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		// reroute calls to the root to index.html via the file server
+		if r.URL.Path != "/" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		r.URL.Path = "/static/"
+		staticFileHandler.ServeHTTP(w, r)
+	})
+	http.Handle("/static/", staticFileHandler)
+
+	// define handlers
 	http.HandleFunc("/health", healthHandler)
 	http.HandleFunc("/api/flush", func(w http.ResponseWriter, r *http.Request) {
 		pollChan <- struct{}{}

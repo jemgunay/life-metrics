@@ -5,7 +5,8 @@
             <div class="card-body">
                 <form class="row">
                     <div class="col-md-12">
-                        <div class="alert alert-dismissible fade show" v-bind:class="'alert-' + alertIndicator" role="alert" v-if="alertIndicator">
+                        <div class="alert alert-dismissible fade show" v-bind:class="'alert-' + alertIndicator"
+                             role="alert" v-if="alertIndicator">
                             <span v-if="alertIndicator === 'success'">Day log submitted!</span>
                             <span v-else>Day log submission failed!</span>
                             <button type="button" class="close" data-dismiss="alert" aria-label="Close">
@@ -87,23 +88,36 @@ export default {
     data() {
         return {
             alertIndicator: "",
-            logDate: (new Date()).toISOString().slice(0,10),
-            logNotes: "",
-            logMetrics: {},
+            logDate: (new Date()).toISOString().slice(0, 10),
+            logMetrics: {
+                "general_mood": 5,
+                "work_mood": 5,
+                "diet_quality": 5,
+                "water_intake": 5,
+                "sleep_quality": 5,
+                "exercise": false,
+                "meditation": false
+            },
+            logNotes: ""
         };
     },
     methods: {
-        submitDayLog: function(event) {
+        submitDayLog: function (event) {
             event.preventDefault();
+            event.stopPropagation();
+
             this.alertIndicator = "";
 
-            console.log(this.logMetrics);
+            for (let i in this.logMetrics) {
+                if (typeof(this.logMetrics[i]) === "string") {
+                    this.logMetrics[i] = parseInt(this.logMetrics[i]);
+                }
+            }
             let reqBody = {
                 "date": this.logDate + "T00:00:00Z",
                 "notes": this.logNotes,
-                "metrics": {...this.logMetrics},
+                "metrics": this.logMetrics,
             };
-            console.log(reqBody);
 
             axios({
                 method: "post",
