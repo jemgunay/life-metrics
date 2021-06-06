@@ -14,9 +14,9 @@ type Monzo struct {
 	Key string
 }
 
-func New() (Config, error) {
+func New(configFile string) (Config, error) {
 	conf := Config{}
-	b, err := ioutil.ReadFile("config/local.JSON")
+	b, err := ioutil.ReadFile("config/" + configFile)
 	if err != nil {
 		return conf, err
 	}
