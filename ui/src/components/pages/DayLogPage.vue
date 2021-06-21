@@ -121,7 +121,7 @@ export default {
 
             axios({
                 method: "post",
-                url: "http://localhost:8080/api",
+                url: process.env.VUE_APP_API_HOST + "/api",
                 data: JSON.stringify(reqBody)
             })
                 .then((resp) => {
