@@ -119,6 +119,7 @@ export default {
                 "metrics": this.logMetrics,
             };
 
+            console.log(process.env.VUE_APP_API_HOST);
             axios({
                 method: "post",
                 url: process.env.VUE_APP_API_HOST + "/api",

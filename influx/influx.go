@@ -27,7 +27,7 @@ func New(influxHost, authToken string) Requester {
 }
 
 func (r Requester) Write(measurement string, results ...sources.Result) {
-	log.Printf("%+v", results)
+	log.Printf("writing to influx: %+v", results)
 	// Create point using full params constructor
 	for _, result := range results {
 		p := influxdb2.NewPoint(

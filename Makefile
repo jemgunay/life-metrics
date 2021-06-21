@@ -8,7 +8,7 @@ lint-vue-fix:
 
 .PHONY: deploy-vue
 deploy-vue:
-	cd ui && npm run build
+	cd ui && rm -rf dist && npm run build
 
 .PHONY: deploy-go
 deploy-go:
