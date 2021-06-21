@@ -37,6 +37,8 @@ func New() API {
 }
 
 func (a API) Handler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("request to API handler (%s) from %s", r.URL, r.RemoteAddr)
+
 	// read request body
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -77,7 +79,7 @@ func newResult(notes string) result {
 func (r *result) calcHealth() {
 	r.fields["score_value"] = r.scoreValue
 	r.fields["score_max"] = r.scoreMax
-	r.fields["score_health"] = float64(r.scoreValue / r.scoreMax * 100)
+	r.fields["score_health"] = float64(r.scoreValue) / float64(r.scoreMax) * 100
 }
 
 func (r *result) addInt(name string, value int) {
@@ -87,8 +89,9 @@ func (r *result) addInt(name string, value int) {
 }
 
 func (r *result) addBool(name string, value bool) {
-	r.fields[name] = value
+	r.fields[name] = 0
 	if value {
+		r.fields[name] = 1
 		r.scoreValue += 1
 	}
 	r.scoreMax += 1
@@ -105,12 +108,15 @@ func (a API) process(req request) error {
 	res.addInt("sleep_quality", req.Metrics.SleepQuality)
 	res.addBool("exercise", req.Metrics.Exercise)
 	res.addBool("meditation", req.Metrics.Meditation)
+	res.calcHealth()
 
 	// aggregate tags and stringify values
 	a.updates <- sources.Result{
 		Time:   req.Date,
 		Fields: res.fields,
 	}
+
+	log.Printf("request to API handler processed")
 
 	return nil
 }

@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve --port 8081",
-    "build": "vue-cli-service build",
+    "build": "vue-cli-service build --mode production",
     "lint": "./node_modules/.bin/eslint src --ext .js,.vue",
     "lint-fix": "./node_modules/.bin/eslint src --ext .js,.vue --fix"
   },
@@ -26,6 +26,7 @@
     "@vue/compiler-sfc": "^3.0.0",
     "babel-eslint": "^10.1.0",
     "bootstrap": "^4.6.0",
+    "dotenv-webpack": "^7.0.3",
     "eslint": "^6.7.2",
     "eslint-plugin-vue": "^7.0.0",
     "mutationobserver-shim": "^0.3.7",

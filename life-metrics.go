@@ -49,9 +49,10 @@ func main() {
 	pollChan := make(chan struct{}, 1)
 	go func() {
 		ticker := time.NewTicker(*pollInterval)
+		apiUpdates := api.Updates()
 		for {
 			select {
-			case logPayload := <-api.Updates():
+			case logPayload := <-apiUpdates:
 				influxRequester.Write("day_log", logPayload)
 			case <-pollChan:
 			case <-ticker.C:
@@ -72,7 +73,9 @@ func main() {
 						return
 					}
 
-					influxRequester.Write(source.Name(), results...)
+					if len(results) > 0 {
+						influxRequester.Write(source.Name(), results...)
+					}
 				}()
 			}
 		}
