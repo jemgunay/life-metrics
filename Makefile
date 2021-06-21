@@ -6,12 +6,18 @@ lint-vue:
 lint-vue-fix:
 	cd ui && npm run lint-fix
 
-.PHONY: deploy
-deploy:
+.PHONY: deploy-vue
+deploy-vue:
 	cd ui && npm run build
-	rm -rf build && mkdir -p build/ui && cp -r ui/dist/* build/ui
-	gcloud app deploy --verbosity debug
 
-.PHONY: tail-logs
-tail-logs:
+.PHONY: deploy-go
+deploy-go:
+	gcloud builds submit --tag gcr.io/life-metrics-316018/life-metrics
+	gcloud run deploy life-metrics --image gcr.io/life-metrics-316018/life-metrics --platform managed
+
+.PHONY: deploy
+deploy: deploy-vue deploy-go
+
+.PHONY: g-tail-logs
+g-tail-logs:
 	gcloud app logs tail -s default

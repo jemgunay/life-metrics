@@ -14,13 +14,12 @@ type Requester struct {
 	readClient  influxdbapi.QueryAPI
 }
 
-func New() Requester {
+func New(influxHost, authToken string) Requester {
 	const (
-		org       = "home"
-		bucket    = "life"
-		authToken = "zvdEmxrLzHunj6n2PxgmMsqubwoTjfZEBJFDKMSZIqoBZ2pe09_W9-JY9TYxQj3_oP2q8pb_HBLO3_QMufSNLw=="
+		org       = "***REMOVED***"
+		bucket    = "life-metrics"
 	)
-	client := influxdb2.NewClient("http://localhost:8086", authToken)
+	client := influxdb2.NewClient(influxHost, authToken)
 	return Requester{
 		writeClient: client.WriteAPI(org, bucket),
 		readClient:  client.QueryAPI(org),
