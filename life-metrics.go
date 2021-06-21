@@ -23,12 +23,12 @@ func main() {
 	influxToken := os.Getenv("INFLUX_TOKEN")
 	if influxToken == "" {
 		influxToken = "zvdEmxrLzHunj6n2PxgmMsqubwoTjfZEBJFDKMSZIqoBZ2pe09_W9-JY9TYxQj3_oP2q8pb_HBLO3_QMufSNLw=="
-		log.Printf("no ENV INFLUX_TOKEN defined - defaulting to %s", port)
+		log.Printf("no ENV INFLUX_TOKEN defined - defaulting to %s", influxToken)
 	}
 	influxHost := os.Getenv("INFLUX_HOST")
 	if influxHost == "" {
 		influxHost = "http://localhost:8086"
-		log.Printf("no ENV INFLUX_HOST defined - defaulting to %s", port)
+		log.Printf("no ENV INFLUX_HOST defined - defaulting to %s", influxHost)
 	}
 	pollInterval := flag.Duration("poll_interval", time.Minute*10, "how often to poll the sources")
 	flag.Parse()
