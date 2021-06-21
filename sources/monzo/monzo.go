@@ -3,7 +3,6 @@ package monzo
 import (
 	"time"
 
-	"github.com/jemgunay/life-metrics/config"
 	"github.com/jemgunay/life-metrics/sources"
 )
 
@@ -11,7 +10,7 @@ type Monzo struct {
 
 }
 
-func New(conf config.Monzo) *Monzo {
+func New() *Monzo {
 	return &Monzo{}
 }
 
