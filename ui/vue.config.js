@@ -1,3 +1,10 @@
+const Dotenv = require('dotenv-webpack');
+
 module.exports = {
-    publicPath: ""
+    publicPath: "./",
+    configureWebpack: {
+        plugins: [
+            new Dotenv()
+        ]
+    }
 };

@@ -27,3 +27,6 @@
 
 DataDiary
 LifeLog
+LifeMetrics
+LifeMet
+
