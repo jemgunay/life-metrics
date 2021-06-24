@@ -4,44 +4,31 @@ import (
 	"flag"
 	"log"
 	"net/http"
-	"os"
 	"sync"
 	"time"
 
 	"github.com/jemgunay/life-metrics/api"
+	"github.com/jemgunay/life-metrics/config"
 	"github.com/jemgunay/life-metrics/influx"
 	"github.com/jemgunay/life-metrics/sources"
 	"github.com/jemgunay/life-metrics/sources/monzo"
 )
 
 func main() {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-		log.Printf("no ENV PORT defined - defaulting to port %s", port)
-	}
-	influxToken := os.Getenv("INFLUX_TOKEN")
-	if influxToken == "" {
-		influxToken = "***REMOVED***"
-		log.Printf("no ENV INFLUX_TOKEN defined - defaulting to %s", influxToken)
-	}
-	influxHost := os.Getenv("INFLUX_HOST")
-	if influxHost == "" {
-		influxHost = "http://localhost:8086"
-		log.Printf("no ENV INFLUX_HOST defined - defaulting to %s", influxHost)
-	}
 	pollInterval := flag.Duration("poll_interval", time.Minute*10, "how often to poll the sources")
 	flag.Parse()
 
-	// configure the API
-	api := api.New()
+	conf := config.New()
+
+	// influx storage
+	influxRequester := influx.New(conf.InfluxHost, conf.InfluxToken)
+
 	// configure data sources
 	dataSources := []sources.Source{
 		 monzo.New(),
 	}
-
-	// influx storage
-	influxRequester := influx.New(influxHost, influxToken)
+	// configure the API
+	api := api.New(influxRequester)
 
 	// poll and scrape data from sources at fixed interval
 	startTime := time.Now().UTC().Add(-*pollInterval)
@@ -49,11 +36,8 @@ func main() {
 	pollChan := make(chan struct{}, 1)
 	go func() {
 		ticker := time.NewTicker(*pollInterval)
-		apiUpdates := api.Updates()
 		for {
 			select {
-			case logPayload := <-apiUpdates:
-				influxRequester.Write("day_log", logPayload)
 			case <-pollChan:
 			case <-ticker.C:
 			}
@@ -69,12 +53,18 @@ func main() {
 					log.Printf("collecting from source: %s", source.Name())
 					results, err := source.Collect(startTime, endTime)
 					if err != nil {
-						log.Printf("source collection failed: %s", err)
+						log.Printf("source collection failed: %s: %s", source.Name(), err)
 						return
 					}
 
-					if len(results) > 0 {
-						influxRequester.Write(source.Name(), results...)
+					// no new data to store so skip
+					if len(results) == 0 {
+						return
+					}
+
+					// write collected source data to influx
+					if err := influxRequester.Write(source.Name(), results...); err != nil {
+						log.Printf("writing source data to influx failed: %s: %s", source.Name(), err)
 					}
 				}()
 			}
@@ -88,8 +78,8 @@ func main() {
 	})
 	http.HandleFunc("/api", enableCORS(api.Handler))
 
-	log.Printf("HTTP server starting on port %s", port)
-	err := http.ListenAndServe(":"+port, nil)
+	log.Printf("HTTP server starting on port %s", conf.Port)
+	err := http.ListenAndServe(":"+conf.Port, nil)
 	log.Printf("HTTP server shut down: %s", err)
 }
 
