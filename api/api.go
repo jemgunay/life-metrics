@@ -2,11 +2,13 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
 
+	"github.com/jemgunay/life-metrics/influx"
 	"github.com/jemgunay/life-metrics/sources"
 )
 
@@ -27,12 +29,12 @@ type metrics struct {
 }
 
 type API struct {
-	updates chan sources.Result
+	influxRequester influx.Requester
 }
 
-func New() API {
+func New(influxRequester influx.Requester) API {
 	return API{
-		updates: make(chan sources.Result, 1),
+		influxRequester: influxRequester,
 	}
 }
 
@@ -56,9 +58,11 @@ func (a API) Handler(w http.ResponseWriter, r *http.Request) {
 
 	if err := a.process(req); err != nil {
 		log.Printf("failed to process request: %s", err)
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
+	log.Printf("request to API handler processed")
 }
 
 type result struct {
@@ -111,16 +115,13 @@ func (a API) process(req request) error {
 	res.calcHealth()
 
 	// aggregate tags and stringify values
-	a.updates <- sources.Result{
+	logData := sources.Result{
 		Time:   req.Date,
 		Fields: res.fields,
 	}
 
-	log.Printf("request to API handler processed")
-
+	if err := a.influxRequester.Write("day_log", logData); err != nil {
+		return fmt.Errorf("failed to write day log data to influx: %s", err)
+	}
 	return nil
-}
-
-func (a API) Updates() <-chan sources.Result {
-	return a.updates
 }
