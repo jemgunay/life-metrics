@@ -3,40 +3,41 @@ package config
 import (
 	"log"
 	"os"
+	"strconv"
 )
 
+// Config is the service config.
 type Config struct {
-	Port        string
+	Port        int
 	InfluxHost  string
 	InfluxToken string
 }
 
+// New initialises a Config from environment variables.
 func New() Config {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-		log.Printf("no ENV PORT defined - defaulting to port %s", port)
-	}
-
-	influxHost := os.Getenv("INFLUX_HOST")
-	if influxHost == "" {
-		influxHost = "http://localhost:8086"
-		log.Printf("no ENV INFLUX_HOST defined - defaulting to %s", influxHost)
-	} else {
-		log.Printf("ENV INFLUX_HOST found")
-	}
-
-	influxToken := os.Getenv("INFLUX_TOKEN")
-	if influxToken == "" {
-		influxToken = "***REMOVED***"
-		log.Printf("no ENV INFLUX_TOKEN defined - defaulting to %s", influxToken)
-	} else {
-		log.Printf("ENV INFLUX_TOKEN found")
-	}
-
+	// attempt to get config environment vars, or default them
 	return Config{
-		Port:        port,
-		InfluxHost:  influxHost,
-		InfluxToken: influxToken,
+		Port:        getEnvVarInt("PORT", 8080),
+		InfluxHost:  getEnvVar("INFLUX_HOST", "http://localhost:8086"),
+		InfluxToken: getEnvVar("INFLUX_TOKEN", ""),
 	}
+}
+
+// getEnvVar gets a string environment variable or defaults it if unset.
+func getEnvVar(key, defaultValue string) string {
+	val := os.Getenv(key)
+	if val == "" {
+		log.Printf("no %s environment var defined - defaulting to %s", key, defaultValue)
+		return defaultValue
+	}
+
+	log.Printf("%s environment var found", key)
+	return val
+}
+
+// getEnvVarInt gets an integer environment variable or defaults it if unset.
+func getEnvVarInt(key string, defaultValue int) int {
+	varStr := getEnvVar(key, strconv.Itoa(defaultValue))
+	varInt, _ := strconv.Atoi(varStr)
+	return varInt
 }

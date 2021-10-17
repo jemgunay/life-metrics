@@ -7,8 +7,8 @@
                     <div class="col-md-12">
                         <div class="alert alert-dismissible fade show" v-bind:class="'alert-' + alertIndicator"
                              role="alert" v-if="alertIndicator">
-                            <span v-if="alertIndicator === 'success'">Day log submitted!</span>
-                            <span v-else>Day log submission failed!</span>
+                            <span>{{ alertMessage }}</span>
+
                             <button type="button" class="close" data-dismiss="alert" aria-label="Close">
                                 <span aria-hidden="true">&times;</span>
                             </button>
@@ -27,12 +27,6 @@
                     </div>
 
                     <div class="form-group col-md-6">
-                        <label for="work-mood-input">Work Mood</label>
-                        <input type="range" class="form-control" id="work-mood-input" min="0" max="10"
-                               v-model="logMetrics['work_mood']">
-                    </div>
-
-                    <div class="form-group col-md-6">
                         <label for="diet-input">Diet Quality</label>
                         <input type="range" class="form-control" id="diet-input" min="0" max="10"
                                v-model="logMetrics['diet_quality']">
@@ -45,9 +39,9 @@
                     </div>
 
                     <div class="form-group col-md-6">
-                        <label for="sleep-input">Sleep Quality</label>
-                        <input type="range" class="form-control" id="sleep-input" min="0" max="10"
-                               v-model="logMetrics['sleep_quality']">
+                        <label for="caffeine-input">Caffeine Intake</label>
+                        <input type="range" class="form-control" id="caffeine-input" min="0" max="10"
+                               v-model="logMetrics['caffeine_intake']">
                     </div>
 
                     <div class="form-group col-6 col-md-3">
@@ -88,25 +82,41 @@ export default {
     data() {
         return {
             alertIndicator: "",
+            alertMessage: "",
             logDate: (new Date()).toISOString().slice(0, 10),
             logMetrics: {
                 "general_mood": 5,
-                "work_mood": 5,
                 "diet_quality": 5,
                 "water_intake": 5,
-                "sleep_quality": 5,
+                "caffeine_intake": 5,
                 "exercise": false,
                 "meditation": false
             },
             logNotes: ""
         };
     },
+    mounted() {
+        // determine if log has been submitted today already
+        this.performAPIRequest("GET", "", (data) => {
+            if (data["submitted"] === true) {
+                this.logMetrics = data["metrics"];
+                this.logNotes = data["notes"];
+
+                this.setBanner("success", "Day log already completed.");
+            }
+        });
+    },
     methods: {
+        setBanner(state, msg) {
+            this.alertIndicator = state;
+            this.alertMessage = msg;
+        },
+
         submitDayLog: function (event) {
             event.preventDefault();
             event.stopPropagation();
 
-            this.alertIndicator = "";
+            this.setBanner();
 
             for (let i in this.logMetrics) {
                 if (typeof(this.logMetrics[i]) === "string") {
@@ -119,18 +129,29 @@ export default {
                 "metrics": this.logMetrics,
             };
 
-            console.log(process.env.VUE_APP_API_HOST);
+            this.performAPIRequest("POST", reqBody, () => {
+                this.setBanner("success", "Day log submitted!");
+
+            }, (error) =>  {
+                this.setBanner("danger", "Day log submission failed! " + error);
+            });
+        },
+
+        performAPIRequest(method, body, successFunc, errorFunc) {
             axios({
-                method: "post",
-                url: process.env.VUE_APP_API_HOST + "/api",
-                data: JSON.stringify(reqBody)
+                method: method,
+                url: process.env.VUE_APP_API_HOST + "/api/data",
+                data: JSON.stringify(body)
             })
                 .then((resp) => {
-                    this.alertIndicator = "success";
-                    console.log(resp);
+                    if (successFunc) {
+                        successFunc(resp.data);
+                    }
                 })
                 .catch((error) => {
-                    this.alertIndicator = "danger";
+                    if (errorFunc) {
+                        errorFunc(error);
+                    }
                     console.error(error);
                 });
         }
