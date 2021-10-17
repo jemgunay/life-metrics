@@ -3,7 +3,7 @@
 read -rp "Enter influx host: " influx_host
 read -rsp "Enter influx token: " influx_token
 
-curl --request POST "${influx_host}/api/v2/delete/?org=jemgunay@gmail.com&bucket=life-metrics" \
+curl --request POST "${influx_host}/api/v2/delete/\?org\=jemgunay\@gmail\.com/&bucket/=life-metrics" \
   --header "Authorization: Token ${influx_token}" \
   --header 'Content-Type: application/json' \
   --data '{

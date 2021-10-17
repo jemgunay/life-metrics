@@ -1,3 +1,7 @@
+.PHONY: lint-go
+lint-go:
+	golint ./... | grep -v "vendor/"
+
 .PHONY: lint-vue
 lint-vue:
 	cd ui && npm run lint

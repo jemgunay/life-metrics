@@ -10,6 +10,7 @@
 
 * Web API
 * Sources
+  * Caffeine
   * Canlendar
   * Calendar (events, birthdays)
   * Monzo
