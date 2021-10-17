@@ -4,6 +4,7 @@ import (
 	"flag"
 	"log"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
@@ -25,7 +26,7 @@ func main() {
 
 	// configure data sources
 	dataSources := []sources.Source{
-		 monzo.New(),
+		monzo.New(),
 	}
 	// configure the API
 	api := api.New(influxRequester)
@@ -72,14 +73,14 @@ func main() {
 	}()
 
 	// define handlers
-	http.HandleFunc("/health", healthHandler)
-	http.HandleFunc("/api/flush", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/api/collect", func(w http.ResponseWriter, r *http.Request) {
 		pollChan <- struct{}{}
 	})
-	http.HandleFunc("/api", enableCORS(api.Handler))
+	http.HandleFunc("/api/data", enableCORS(api.Handler))
+	http.HandleFunc("/health", healthHandler)
 
-	log.Printf("HTTP server starting on port %s", conf.Port)
-	err := http.ListenAndServe(":"+conf.Port, nil)
+	log.Printf("HTTP server starting on port %d", conf.Port)
+	err := http.ListenAndServe(":"+strconv.Itoa(conf.Port), nil)
 	log.Printf("HTTP server shut down: %s", err)
 }
 
