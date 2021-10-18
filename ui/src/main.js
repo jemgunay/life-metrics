@@ -4,14 +4,13 @@ import { createApp } from "vue";
 import { createRouter, createWebHistory } from "vue-router";
 import App from "./App.vue";
 import DayLogPage from "./components/pages/DayLogPage.vue";
-import QueryPage from "./components/pages/QueryPage.vue";
-import ConfigPage from "./components/pages/ConfigPage.vue";
+import SourcesPage from "./components/pages/SourcesPage.vue";
 
 const routes = [
     {
         path: "/daylog",
         name: "dayLog",
-        component: DayLogPage,
+        component: DayLogPage
     },
     {
         path: "/",
@@ -19,15 +18,10 @@ const routes = [
         redirect: {name: "dayLog"}
     },
     {
-        path: "/query",
-        name: "query",
-        component: QueryPage,
-    },
-    {
-        path: "/config",
-        name: "config",
-        component: ConfigPage,
-    },
+        path: "/sources",
+        name: "sources",
+        component: SourcesPage
+    }
 ];
 
 const router = createRouter({
