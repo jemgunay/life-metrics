@@ -13,10 +13,7 @@
                     <router-link class="nav-link" active-class="active" :to="{ name: 'dayLog'}">Day Log</router-link>
                 </li>
                 <li class="nav-item">
-                    <router-link class="nav-link" active-class="active" :to="{ name: 'query'}">Query</router-link>
-                </li>
-                <li class="nav-item">
-                    <router-link class="nav-link" active-class="active" :to="{ name: 'config'}">Config</router-link>
+                    <router-link class="nav-link" active-class="active" :to="{ name: 'sources'}">Sources</router-link>
                 </li>
             </ul>
         </div>

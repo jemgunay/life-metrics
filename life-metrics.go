@@ -25,15 +25,16 @@ func main() {
 	influxRequester := influx.New(conf.InfluxHost, conf.InfluxToken)
 
 	// configure data sources
+	monzoSource := monzo.New()
 	dataSources := []sources.Source{
-		monzo.New(),
+		monzoSource,
 	}
 	// configure the API
 	api := api.New(influxRequester)
 
 	// poll and scrape data from sources at fixed interval
-	startTime := time.Now().UTC().Add(-*pollInterval)
 	endTime := time.Now().UTC()
+	startTime := endTime.Add(-*pollInterval)
 	pollChan := make(chan struct{}, 1)
 	go func() {
 		ticker := time.NewTicker(*pollInterval)
@@ -47,7 +48,7 @@ func main() {
 			wg := &sync.WaitGroup{}
 			wg.Add(len(dataSources))
 			for _, source := range dataSources {
-				go func() {
+				go func(source sources.Source) {
 					defer wg.Done()
 
 					// perform source collection
@@ -67,16 +68,22 @@ func main() {
 					if err := influxRequester.Write(source.Name(), results...); err != nil {
 						log.Printf("writing source data to influx failed: %s: %s", source.Name(), err)
 					}
-				}()
+				}(source)
 			}
 		}
 	}()
 
 	// define handlers
-	http.HandleFunc("/api/collect", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/api/data", enableCORS(api.Handler))
+	http.HandleFunc("/api/data/collect", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
 		pollChan <- struct{}{}
 	})
-	http.HandleFunc("/api/data", enableCORS(api.Handler))
+	http.HandleFunc("/api/auth/monzo", monzoSource.StartOauth)
+	http.HandleFunc("/api/auth/monzo/callback", monzoSource.CompleteOauth)
 	http.HandleFunc("/health", healthHandler)
 
 	log.Printf("HTTP server starting on port %d", conf.Port)
