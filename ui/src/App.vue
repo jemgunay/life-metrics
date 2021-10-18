@@ -2,9 +2,7 @@
     <div>
         <NavBar/>
         <div class="container">
-            <div class="row">
-                <router-view />
-            </div>
+            <router-view />
         </div>
     </div>
 </template>
