@@ -10,7 +10,7 @@
         <div class="navbar-collapse collapse w-100 justify-content-center" id="navbar-main">
             <ul class="navbar-nav mx-auto">
                 <li class="nav-item">
-                    <router-link class="nav-link" active-class="active" :to="{ name: 'dayLog'}">Day Log</router-link>
+                    <router-link class="nav-link" active-class="active" :to="{ name: 'home'}">Day Log</router-link>
                 </li>
                 <li class="nav-item">
                     <router-link class="nav-link" active-class="active" :to="{ name: 'sources'}">Sources</router-link>
