@@ -8,14 +8,9 @@ import SourcesPage from "./components/pages/SourcesPage.vue";
 
 const routes = [
     {
-        path: "/daylog",
-        name: "dayLog",
-        component: DayLogPage
-    },
-    {
         path: "/",
         name: "home",
-        redirect: {name: "dayLog"}
+        component: DayLogPage
     },
     {
         path: "/sources",

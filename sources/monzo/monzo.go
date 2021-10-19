@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/jemgunay/life-metrics/sources"
@@ -16,21 +17,43 @@ var httpClient = &http.Client{
 	Timeout: time.Second * 10,
 }
 
-// Monzo TODO
+// Monzo represents the Monzo collection source.
 type Monzo struct {
-	accessToken  string
-	refreshToken string
-	expiresIn    int64
+	auth              authAccessDetails
+	authRefreshedChan chan authAccessDetails
 }
 
 // New TODO
 func New() *Monzo {
-	return &Monzo{}
+	m := &Monzo{
+		authRefreshedChan: make(chan authAccessDetails, 1),
+	}
+	refreshTimer := time.NewTimer(time.Hour)
+	go func() {
+		for {
+			select {
+			case <-refreshTimer.C:
+				m.fetchAccessToken(m.auth.RefreshToken, accessCodeRefresh)
+
+			case m.auth = <-m.authRefreshedChan:
+				// reset auth refresh timer
+				refreshTimer.Stop()
+				timeToRefresh := time.Second * time.Duration(m.auth.ExpiresIn)
+				refreshTimer = time.NewTimer(timeToRefresh)
+				log.Printf("Monzo authenticated - next authentication in %s", timeToRefresh)
+			}
+		}
+	}()
+	return m
 }
 
-// Name TODO
+// Name returns the source name.
 func (m *Monzo) Name() string {
 	return "monzo"
+}
+
+type accountsResult struct {
+	Accounts []account `json:"accounts"`
 }
 
 type account struct {
@@ -38,13 +61,9 @@ type account struct {
 	Description string `json:"description"`
 }
 
-type accountsResult struct {
-	Accounts []account `json:"accounts"`
-}
-
 // Collect TODO
 func (m *Monzo) Collect(start, end time.Time) ([]sources.Result, error) {
-	if m.accessToken == "" {
+	if m.auth.AccessToken == "" {
 		return nil, errors.New("access token not set - oauth setup required")
 	}
 
@@ -54,12 +73,11 @@ func (m *Monzo) Collect(start, end time.Time) ([]sources.Result, error) {
 	}
 
 	// get transactions for account
-	transactions, err := m.getTransactions(account.ID)
+	transactions, err := m.getTransactions(account.ID, start, end)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get transactions: %s", err)
 	}
 
-	//log.Printf("%+v", transactions)
 	for _, transaction := range transactions.Transactions {
 		if transaction.Category == "eating_out" {
 			log.Printf("%s, %s -> %v", transaction.Merchant, transaction.Description, transaction.Amount)
@@ -74,7 +92,7 @@ func (m *Monzo) getAccount() (account, error) {
 	if err != nil {
 		return account{}, fmt.Errorf("failed to create accounts request: %s", err)
 	}
-	req.Header.Add("Authorization", "Bearer "+m.accessToken)
+	req.Header.Add("Authorization", "Bearer "+m.auth.AccessToken)
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
@@ -102,32 +120,37 @@ func (m *Monzo) getAccount() (account, error) {
 	return accounts.Accounts[0], nil
 }
 
-type transaction struct {
-	AccountBalance int       `json:"account_balance"`
-	Amount         int       `json:"amount"`
-	Created        time.Time `json:"created"`
-	Currency       string    `json:"currency"`
-	Description    string    `json:"description"`
-	ID             string    `json:"id"`
-	Merchant       string    `json:"merchant"`
-	Notes    string    `json:"notes"`
-	IsLoad   bool      `json:"is_load"`
-	Settled  time.Time `json:"settled"`
-	Category string    `json:"category"`
-}
-
 type transactionsResult struct {
 	Transactions []transaction `json:"transactions"`
 }
 
-func (m *Monzo) getTransactions(accountID string) (transactionsResult, error) {
+type transaction struct {
+	AccountBalance int    `json:"account_balance"`
+	Amount         int    `json:"amount"`
+	CreatedTime    string `json:"created"`
+	Currency       string `json:"currency"`
+	Description    string `json:"description"`
+	ID             string `json:"id"`
+	Merchant       string `json:"merchant"`
+	Notes          string `json:"notes"`
+	IsLoad         bool   `json:"is_load"`
+	Settled        string `json:"settled"`
+	Category       string `json:"category"`
+}
+
+func (m *Monzo) getTransactions(accountID string, start, end time.Time) (transactionsResult, error) {
 	var transactions transactionsResult
 
-	req, err := http.NewRequest(http.MethodGet, "https://api.monzo.com/transactions?account_id="+accountID, nil)
+	q := url.Values{}
+	q.Set("account_id", accountID)
+	q.Set("since", start.Format(time.RFC3339))
+	q.Set("before", end.Format(time.RFC3339))
+
+	req, err := http.NewRequest(http.MethodGet, "https://api.monzo.com/transactions?"+q.Encode(), nil)
 	if err != nil {
 		return transactions, fmt.Errorf("failed to create accounts request: %s", err)
 	}
-	req.Header.Add("Authorization", "Bearer "+m.accessToken)
+	req.Header.Add("Authorization", "Bearer "+m.auth.AccessToken)
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
