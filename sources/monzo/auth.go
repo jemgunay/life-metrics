@@ -2,7 +2,6 @@ package monzo
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -15,41 +14,57 @@ const (
 	clientSecret = "mnzconf.1r2wL7WSwlexh3ApOPMQUHYurwzgjVQWfAULv9cMWD4pzd3nfJfgT6pN+gVH8+Fc17Qr1cihxna7EBgASvIivQ=="
 )
 
-type oauthCallbackResp struct {
+type authAccessDetails struct {
 	AccessToken  string `json:"access_token"`
 	ClientID     string `json:"client_id"`
 	ExpiresIn    int64  `json:"expires_in"`
 	RefreshToken string `json:"refresh_token"`
-	Scope        string `json:"scope"`
 	TokenType    string `json:"token_type"`
 	UserID       string `json:"user_id"`
 }
 
-// StartOauth redirects the user to Monzo to authenticate the account.
-func (m *Monzo) StartOauth(w http.ResponseWriter, r *http.Request) {
-	q := url.Values{}
-	q.Set("client_id", clientID)
-	q.Set("redirect_uri", "http://localhost:8080/api/auth/monzo/callback")
-	q.Set("response_type", "code")
-	authURL := "https://auth.monzo.com?" + q.Encode()
-	fmt.Println(authURL)
+// AuthenticateHandler starts the OAuth2 authentication sequence, requesting a temporary access code from Monzo. This
+// endpoint also receives callback requests from Monzo with the temporary access code.
+func (m *Monzo) AuthenticateHandler(w http.ResponseWriter, r *http.Request) {
+	// first step of oauth - request a temporary access code from monzo
+	code := r.URL.Query().Get("code")
+	if code == "" {
+		q := url.Values{}
+		q.Set("client_id", clientID)
+		q.Set("redirect_uri", "http://localhost:8080/api/auth/monzo")
+		q.Set("response_type", "code")
+		authURL := "https://auth.monzo.com?" + q.Encode()
 
-	http.Redirect(w, r, authURL, http.StatusTemporaryRedirect)
+		http.Redirect(w, r, authURL, http.StatusTemporaryRedirect)
+		return
+	}
+
+	// second step of oauth - monzo sent a temporary access code - request an access token from monzo
+	m.fetchAccessToken(code, accessCodeInitial)
 }
 
-// CompleteOauth
-func (m *Monzo) CompleteOauth(w http.ResponseWriter, r *http.Request) {
-	// read temporary access code from query
-	code := r.URL.Query().Get("code")
+const (
+	accessCodeInitial int = iota
+	accessCodeRefresh
+)
 
+func (m *Monzo) fetchAccessToken(code string, requestType int) {
 	// use the temporary auth code to get an access token
 	form := url.Values{}
-	form.Set("grant_type", "authorization_code")
 	form.Set("client_id", clientID)
 	form.Set("client_secret", clientSecret)
-	form.Set("redirect_uri", "http://localhost:8080/api/auth/monzo/callback")
-	form.Set("code", code)
+	if requestType == accessCodeInitial {
+		// first access token request
+		form.Set("grant_type", "authorization_code")
+		form.Set("redirect_uri", "http://localhost:8080/api/auth/monzo")
+		form.Set("code", code)
+	} else {
+		// refresh access token request
+		form.Set("grant_type", "refresh_token")
+		form.Set("refresh_token", code)
+	}
 
+	// third step of oauth - exchange the temporary access code for an access token
 	req, err := http.NewRequest(http.MethodPost, "https://api.monzo.com/oauth2/token", strings.NewReader(form.Encode()))
 	if err != nil {
 		log.Printf("failed to create token request: %s", err)
@@ -75,15 +90,12 @@ func (m *Monzo) CompleteOauth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var authCallback oauthCallbackResp
+	var authCallback authAccessDetails
 	if err := json.Unmarshal(b, &authCallback); err != nil {
 		log.Printf("failed to JSON decode token response body: %s, %s", err, b)
 		return
 	}
 
-	m.accessToken = authCallback.AccessToken
-	m.refreshToken = authCallback.RefreshToken
-	m.expiresIn = authCallback.ExpiresIn
-
-	http.RedirectHandler("/sources", http.StatusTemporaryRedirect)
+	// update auth details
+	m.authRefreshedChan <- authCallback
 }

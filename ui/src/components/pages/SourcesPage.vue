@@ -13,8 +13,8 @@
             <div class="card">
                 <h5 class="card-header">Monzo</h5>
                 <div class="card-body">
-                    <a href="http://localhost:8080/api/auth/monzo">Click to authenticate Monzo.</a>
-                    <p class="mb-0">Ensure you approve the email and in the app.</p>
+                    <a href="http://localhost:8080/api/auth/monzo" target="_blank">Click to authenticate Monzo.</a>
+                    <p class="mb-0">Ensure to approve the email and the app notification.</p>
                 </div>
             </div>
         </div>
