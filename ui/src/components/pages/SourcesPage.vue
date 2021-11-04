@@ -13,7 +13,8 @@
             <div class="card">
                 <h5 class="card-header">Monzo</h5>
                 <div class="card-body">
-                    <a href="http://localhost:8080/api/auth/monzo" target="_blank">Click to authenticate Monzo.</a>
+                    <a :href="apiHost + '/api/auth/monzo'" target="_blank">Click to authenticate
+                        Monzo.</a>
                     <p class="mb-0">Ensure to approve the email and the app notification.</p>
                 </div>
             </div>
@@ -25,7 +26,9 @@
 export default {
     name: "SourcesPage",
     data() {
-        return {};
+        return {
+            apiHost: process.env.VUE_APP_API_HOST,
+        };
     }
 };
 </script>

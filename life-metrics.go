@@ -1,11 +1,9 @@
 package main
 
 import (
-	"flag"
 	"log"
 	"net/http"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/jemgunay/life-metrics/api"
@@ -16,66 +14,40 @@ import (
 )
 
 func main() {
-	pollInterval := flag.Duration("poll_interval", time.Hour*24*7, "how often to poll the sources")
-	flag.Parse()
-
 	conf := config.New()
 
 	// influx storage
 	influxRequester := influx.New(conf.InfluxHost, conf.InfluxToken)
 
 	// configure data sources
-	monzoSource := monzo.New()
+	monzoSource := monzo.New(conf, influxRequester)
 	dataSources := []sources.Source{
 		monzoSource,
 	}
 
 	// poll and scrape data from sources at fixed interval
-	pollChan := make(chan struct{}, 1)
+	pollChan := make(chan bool, 1)
 	go func() {
-		// determine previous collection window
-		endTime := time.Now().UTC()
-		startTime := endTime.Add(-*pollInterval)
-		ticker := time.NewTicker(*pollInterval)
+		for reset := range pollChan {
+			// TODO: allow specify manual range & source name in request for force range collections
+			endTime := time.Now().UTC()
 
-		for {
-			select {
-			case <-pollChan:
-			case <-ticker.C:
-			}
-
-			// perform collection
-			wg := &sync.WaitGroup{}
-			wg.Add(len(dataSources))
-
+			// perform source collection
 			for _, source := range dataSources {
-				go func(source sources.Source) {
-					defer wg.Done()
-
-					// perform source collection
-					log.Printf("collecting from source: %s (%s to %s)", source.Name(), startTime, endTime)
-					results, err := source.Collect(startTime, endTime)
+				var startTime time.Time
+				if reset {
+					startTime = time.Date(2000, 0, 0, 0, 0, 0, 0, time.UTC)
+				} else {
+					var err error
+					startTime, err = influxRequester.LastTimestampByMeasurement(source.Name())
 					if err != nil {
-						log.Printf("source collection failed: %s: %s", source.Name(), err)
-						return
+						log.Printf("failed to get last timestamp for source %s: %s", source.Name(), err)
+						continue
 					}
+				}
 
-					// no new data to store so skip writing to influx
-					if len(results) == 0 {
-						return
-					}
-
-					// write collected source data to influx
-					if err := influxRequester.Write(source.Name(), results...); err != nil {
-						log.Printf("writing source data to influx failed: %s: %s", source.Name(), err)
-					}
-				}(source)
+				source.Collect(sources.NewPeriod(startTime, endTime))
 			}
-
-			wg.Wait()
-
-			endTime.Add(*pollInterval)
-			startTime.Add(*pollInterval)
 		}
 	}()
 
@@ -87,7 +59,9 @@ func main() {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
 		}
-		pollChan <- struct{}{}
+		reset := r.URL.Query().Get("reset") == "true"
+		// TODO: url query for start/end/source name
+		pollChan <- reset
 	})
 	http.HandleFunc("/api/auth/monzo", monzoSource.AuthenticateHandler)
 	http.HandleFunc("/health", healthHandler)

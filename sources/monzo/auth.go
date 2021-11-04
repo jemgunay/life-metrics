@@ -9,11 +9,6 @@ import (
 	"strings"
 )
 
-const (
-	clientID     = "oauth2client_0000A6qzWDoTLNP5UsXcP3"
-	clientSecret = "mnzconf.1r2wL7WSwlexh3ApOPMQUHYurwzgjVQWfAULv9cMWD4pzd3nfJfgT6pN+gVH8+Fc17Qr1cihxna7EBgASvIivQ=="
-)
-
 type authAccessDetails struct {
 	AccessToken  string `json:"access_token"`
 	ClientID     string `json:"client_id"`
@@ -30,7 +25,7 @@ func (m *Monzo) AuthenticateHandler(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
 	if code == "" {
 		q := url.Values{}
-		q.Set("client_id", clientID)
+		q.Set("client_id", m.currentAuth.ClientID)
 		q.Set("redirect_uri", "http://localhost:8080/api/auth/monzo")
 		q.Set("response_type", "code")
 		authURL := "https://auth.monzo.com?" + q.Encode()
@@ -51,8 +46,8 @@ const (
 func (m *Monzo) fetchAccessToken(code string, requestType int) {
 	// use the temporary auth code to get an access token
 	form := url.Values{}
-	form.Set("client_id", clientID)
-	form.Set("client_secret", clientSecret)
+	form.Set("client_id", m.currentAuth.ClientID)
+	form.Set("client_secret", m.clientSecret)
 	if requestType == accessCodeInitial {
 		// first access token request
 		form.Set("grant_type", "authorization_code")
