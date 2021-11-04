@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math"
 	"net/http"
 	"net/url"
 	"time"
 
+	"github.com/jemgunay/life-metrics/config"
 	"github.com/jemgunay/life-metrics/sources"
 )
 
@@ -19,28 +21,50 @@ var httpClient = &http.Client{
 
 // Monzo represents the Monzo collection source.
 type Monzo struct {
-	auth              authAccessDetails
+	currentAuth       authAccessDetails
+	clientSecret      string
 	authRefreshedChan chan authAccessDetails
+	collectionChan    chan sources.Period
 }
 
-// New TODO
-func New() *Monzo {
+// New initialises the Monzo source and manages auth token refreshing.
+func New(conf config.Config, exporter sources.Exporter) *Monzo {
 	m := &Monzo{
 		authRefreshedChan: make(chan authAccessDetails, 1),
+		collectionChan:    make(chan sources.Period),
+		currentAuth: authAccessDetails{
+			ClientID: conf.MonzoClientID,
+		},
+		clientSecret: conf.MonzoClientSecret,
 	}
+
+	// start polling for oauth initial, oauth refresh and collection requests
 	refreshTimer := time.NewTimer(time.Hour)
 	go func() {
 		for {
 			select {
 			case <-refreshTimer.C:
-				m.fetchAccessToken(m.auth.RefreshToken, accessCodeRefresh)
+				log.Print("starting Monzo authentication refresh")
+				m.fetchAccessToken(m.currentAuth.RefreshToken, accessCodeRefresh)
 
-			case m.auth = <-m.authRefreshedChan:
+			case m.currentAuth = <-m.authRefreshedChan:
 				// reset auth refresh timer
 				refreshTimer.Stop()
-				timeToRefresh := time.Second * time.Duration(m.auth.ExpiresIn)
+				timeToRefresh := (time.Second * time.Duration(m.currentAuth.ExpiresIn)) - time.Minute*5
 				refreshTimer = time.NewTimer(timeToRefresh)
 				log.Printf("Monzo authenticated - next authentication in %s", timeToRefresh)
+
+			case period := <-m.collectionChan:
+				results, err := m.performCollection(period)
+				if err != nil {
+					log.Printf("failed to perform collection for Monzo: %s", err)
+					continue
+				}
+
+				// write collected source data to influx
+				if err := exporter.Write(m.Name(), results...); err != nil {
+					log.Printf("writing data to influx failed for Monzo: %s", err)
+				}
 			}
 		}
 	}()
@@ -52,18 +76,17 @@ func (m *Monzo) Name() string {
 	return "monzo"
 }
 
-type accountsResult struct {
-	Accounts []account `json:"accounts"`
+// Collect enqueues a Monzo collection request.
+func (m *Monzo) Collect(period sources.Period) {
+	select {
+	case m.collectionChan <- period:
+	default:
+		log.Print("collection failed for Monzo as collection queue is full")
+	}
 }
 
-type account struct {
-	ID          string `json:"id"`
-	Description string `json:"description"`
-}
-
-// Collect TODO
-func (m *Monzo) Collect(start, end time.Time) ([]sources.Result, error) {
-	if m.auth.AccessToken == "" {
+func (m *Monzo) performCollection(period sources.Period) ([]sources.Result, error) {
+	if m.currentAuth.AccessToken == "" {
 		return nil, errors.New("access token not set - oauth setup required")
 	}
 
@@ -73,18 +96,51 @@ func (m *Monzo) Collect(start, end time.Time) ([]sources.Result, error) {
 	}
 
 	// get transactions for account
-	transactions, err := m.getTransactions(account.ID, start, end)
+	transactions, err := m.getTransactions(account.ID, period.Start, period.End)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get transactions: %s", err)
+		return nil, fmt.Errorf("failed to get transactions list: %s", err)
 	}
 
+	var results []sources.Result
 	for _, transaction := range transactions.Transactions {
+		// process eating out/take away data
 		if transaction.Category == "eating_out" {
-			log.Printf("%s, %s -> %v", transaction.Merchant, transaction.Description, transaction.Amount)
+			createdTime, err := time.Parse(time.RFC3339, transaction.CreatedTime)
+			if err != nil {
+				log.Printf("failed to parse Monzo created time for %s: %s", transaction.CreatedTime, err)
+				continue
+			}
+
+			// convert price from pence (1234) to pounds (12.34)
+			amountInPounds := math.Abs(float64(transaction.Amount)) / 100
+
+			results = append(results, sources.Result{
+				Time: createdTime,
+				Tags: map[string]string{
+					"category":        transaction.Category,
+					"restaurant_name": transaction.Merchant.Name,
+					"restaurant_city": transaction.Merchant.Address.City,
+				},
+				Fields: map[string]interface{}{
+					"price":                amountInPounds,
+					"currency":             transaction.Currency,
+					"restaurant_latitude":  transaction.Merchant.Address.Latitude,
+					"restaurant_longitude": transaction.Merchant.Address.Longitude,
+				},
+			})
 		}
 	}
 
-	return nil, nil
+	return results, nil
+}
+
+type accountsResult struct {
+	Accounts []account `json:"accounts"`
+}
+
+type account struct {
+	ID          string `json:"id"`
+	Description string `json:"description"`
 }
 
 func (m *Monzo) getAccount() (account, error) {
@@ -92,7 +148,7 @@ func (m *Monzo) getAccount() (account, error) {
 	if err != nil {
 		return account{}, fmt.Errorf("failed to create accounts request: %s", err)
 	}
-	req.Header.Add("Authorization", "Bearer "+m.auth.AccessToken)
+	req.Header.Add("Authorization", "Bearer "+m.currentAuth.AccessToken)
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
@@ -125,17 +181,36 @@ type transactionsResult struct {
 }
 
 type transaction struct {
-	AccountBalance int    `json:"account_balance"`
-	Amount         int    `json:"amount"`
-	CreatedTime    string `json:"created"`
-	Currency       string `json:"currency"`
-	Description    string `json:"description"`
-	ID             string `json:"id"`
-	Merchant       string `json:"merchant"`
-	Notes          string `json:"notes"`
-	IsLoad         bool   `json:"is_load"`
-	Settled        string `json:"settled"`
-	Category       string `json:"category"`
+	AccountBalance int      `json:"account_balance"`
+	Amount         int      `json:"amount"`
+	CreatedTime    string   `json:"created"`
+	Currency       string   `json:"currency"`
+	Description    string   `json:"description"`
+	ID             string   `json:"id"`
+	Merchant       merchant `json:"merchant"`
+	Notes          string   `json:"notes"`
+	IsLoad         bool     `json:"is_load"`
+	Settled        string   `json:"settled"`
+	Category       string   `json:"category"`
+}
+
+type merchant struct {
+	Address struct {
+		Address   string  `json:"address"`
+		City      string  `json:"city"`
+		Country   string  `json:"country"`
+		Latitude  float64 `json:"latitude"`
+		Longitude float64 `json:"longitude"`
+		Postcode  string  `json:"postcode"`
+		Region    string  `json:"region"`
+	} `json:"address"`
+	Created  string `json:"created"`
+	GroupID  string `json:"group_id"`
+	ID       string `json:"id"`
+	Logo     string `json:"logo"`
+	Emoji    string `json:"emoji"`
+	Name     string `json:"name"`
+	Category string `json:"category"`
 }
 
 func (m *Monzo) getTransactions(accountID string, start, end time.Time) (transactionsResult, error) {
@@ -145,12 +220,15 @@ func (m *Monzo) getTransactions(accountID string, start, end time.Time) (transac
 	q.Set("account_id", accountID)
 	q.Set("since", start.Format(time.RFC3339))
 	q.Set("before", end.Format(time.RFC3339))
+	// enrich transaction with merchant data
+	q.Set("expand[]", "merchant")
+	fmt.Println(q.Encode())
 
 	req, err := http.NewRequest(http.MethodGet, "https://api.monzo.com/transactions?"+q.Encode(), nil)
 	if err != nil {
 		return transactions, fmt.Errorf("failed to create accounts request: %s", err)
 	}
-	req.Header.Add("Authorization", "Bearer "+m.auth.AccessToken)
+	req.Header.Add("Authorization", "Bearer "+m.currentAuth.AccessToken)
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
@@ -173,6 +251,6 @@ func (m *Monzo) getTransactions(accountID string, start, end time.Time) (transac
 	return transactions, nil
 }
 
-// Shutdown TODO
+// Shutdown does nothing for this module.
 func (m *Monzo) Shutdown() {
 }
