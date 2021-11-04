@@ -4,13 +4,14 @@
 
 ## TODO
 
-1. Form for writing daily data to influx
-2. Ability to query influx to determine if we have today's data already (so we don't get a prompt)
-3. Ability to edit a day's data 
+* Standardise repo + UI naming
+* Google scheduler -> cron -> refresh handlers
+* Firebase for persisting oauth tokens on restart
+* Need general API/web app authentication
 
 * Web API
 * Sources
-  * Caffeine
+  * FitBit
   * Canlendar
   * Calendar (events, birthdays)
   * Monzo
@@ -18,16 +19,8 @@
   * Uber
   * GitHub commits
   * Mobile App
+    * Caffeine
     * End of day summary (sleep, diet, etc)
     * Phone usage (i.e. does screen time affect sleep) 
-  * FitBit
-* Influx storage
-* Dockerise (persist influx data)
 
-### Names
-
-DataDiary
-LifeLog
-LifeMetrics
-LifeMet
 

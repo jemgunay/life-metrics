@@ -20,7 +20,7 @@ deploy-go:
 	gcloud run deploy life-metrics --image gcr.io/life-metrics-316018/life-metrics --platform managed #--version=staging
 
 .PHONY: deploy
-deploy: deploy-go build-vue
+deploy: build-vue deploy-go
 
 .PHONY: g-tail-logs
 g-tail-logs:
