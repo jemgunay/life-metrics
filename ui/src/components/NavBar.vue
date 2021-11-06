@@ -5,7 +5,7 @@
             <span class="navbar-toggler-icon"></span>
         </button>
         <!-- brand -->
-        <router-link class="navbar-brand w-100" active-class="active" :to="{ name: 'home'}">Life Log</router-link>
+        <router-link class="navbar-brand w-100" active-class="active" :to="{ name: 'home'}">Life Metrics</router-link>
         <!-- navs -->
         <div class="navbar-collapse collapse w-100 justify-content-center" id="navbar-main">
             <ul class="navbar-nav mx-auto">
