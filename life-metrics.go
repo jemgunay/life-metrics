@@ -13,9 +13,13 @@ import (
 	"github.com/jemgunay/life-metrics/sources/monzo"
 )
 
+// collectRequest specifies collection details.
 type collectRequest struct {
 	reset bool
 }
+
+// scrapeChan serialises collection requests into the poller.
+var scrapeChan = make(chan collectRequest, 1)
 
 func main() {
 	conf := config.New()
@@ -30,9 +34,8 @@ func main() {
 	}
 
 	// poll and scrape data from sources at fixed interval
-	pollChan := make(chan collectRequest, 1)
 	go func() {
-		for req := range pollChan {
+		for req := range scrapeChan {
 			endTime := time.Now().UTC()
 
 			// perform source collection
@@ -56,23 +59,8 @@ func main() {
 
 	// define handlers
 	apiHandler := api.New(influxRequester).Handler
-	http.HandleFunc("/api/data", enableCORS(apiHandler))
-	http.HandleFunc("/api/data/collect", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			return
-		}
-
-		req := collectRequest{
-			reset: r.URL.Query().Get("reset") == "true",
-		}
-
-		select {
-		case pollChan <- req:
-		default:
-			w.WriteHeader(http.StatusTooManyRequests)
-		}
-	})
+	http.HandleFunc("/api/data/daylog", enableCORS(apiHandler))
+	http.HandleFunc("/api/data/collect", enableCORS(collectHandler))
 	http.HandleFunc("/api/auth/monzo", monzoSource.AuthenticateHandler)
 	http.HandleFunc("/health", healthHandler)
 
@@ -81,11 +69,21 @@ func main() {
 	log.Printf("HTTP server shut down: %s", err)
 }
 
-// enableCORS enables CORS for handlers that it wraps.
-func enableCORS(f http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		f(w, r)
+func collectHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	req := collectRequest{
+		reset: r.URL.Query().Get("reset") == "true",
+	}
+
+	select {
+	case scrapeChan <- req:
+		w.WriteHeader(http.StatusAccepted)
+	default:
+		w.WriteHeader(http.StatusTooManyRequests)
 	}
 }
 
@@ -94,4 +92,12 @@ var startTimestamp = time.Now().UTC().Format(time.RFC3339)
 func healthHandler(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Life-Metrics-Start-Time", startTimestamp)
 	w.WriteHeader(http.StatusOK)
+}
+
+// enableCORS enables CORS for handlers that it wraps.
+func enableCORS(f http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		f(w, r)
+	}
 }

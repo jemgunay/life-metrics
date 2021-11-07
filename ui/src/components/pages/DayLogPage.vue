@@ -18,7 +18,8 @@
 
                         <div class="form-group col-md-6">
                             <label for="log-date-input">Log Date</label>
-                            <input type="date" class="form-control" id="log-date-input" v-model="logDate">
+                            <input type="date" class="form-control" id="log-date-input" v-model="logDate"
+                                   v-on:change="getDayLog">
                         </div>
 
                         <div class="form-group col-md-6">
@@ -94,19 +95,15 @@ export default {
                 "exercise": false,
                 "meditation": false
             },
+            logMetricsDefaults: {},
             logNotes: ""
         };
     },
     mounted() {
+        // store a copy of the metrics defaults for form resetting
+        this.logMetricsDefaults = this.logMetrics;
         // determine if log has been submitted today already
-        this.performAPIRequest("GET", "", (data) => {
-            if (data["submitted"] === true) {
-                this.logMetrics = data["metrics"];
-                this.logNotes = data["notes"];
-
-                this.setBanner("success", "Day log already completed.");
-            }
-        });
+        this.getDayLog();
     },
     methods: {
         setBanner(state, msg) {
@@ -114,14 +111,36 @@ export default {
             this.alertMessage = msg;
         },
 
-        submitDayLog: function (event) {
+        getDayLog() {
+            let date = this.logDate + "T00:00:00Z";
+
+            this.performDayLogRequest("/api/data/daylog?date=" + date, "GET", "", (data) => {
+                if (data["submitted"] === true) {
+                    this.logMetrics = data["metrics"];
+                    this.logNotes = data["notes"];
+
+                    this.setBanner("success", "Day log completed for the selected day.");
+                    return;
+                }
+
+                // reset form defaults
+                this.logMetrics = this.logMetricsDefaults;
+                this.logNotes = "";
+                this.setBanner("info", "Day log not completed for the selected day.");
+
+            }, (error) => {
+                this.setBanner("danger", "Fetching day log state failed! " + error);
+            });
+        },
+
+        submitDayLog(event) {
             event.preventDefault();
             event.stopPropagation();
 
             this.setBanner();
 
             for (let i in this.logMetrics) {
-                if (typeof(this.logMetrics[i]) === "string") {
+                if (typeof (this.logMetrics[i]) === "string") {
                     this.logMetrics[i] = parseInt(this.logMetrics[i]);
                 }
             }
@@ -131,18 +150,18 @@ export default {
                 "metrics": this.logMetrics,
             };
 
-            this.performAPIRequest("POST", reqBody, () => {
+            this.performDayLogRequest("/api/data/daylog", "POST", reqBody, () => {
                 this.setBanner("success", "Day log submitted!");
 
-            }, (error) =>  {
+            }, (error) => {
                 this.setBanner("danger", "Day log submission failed! " + error);
             });
         },
 
-        performAPIRequest(method, body, successFunc, errorFunc) {
+        performDayLogRequest(url, method, body, successFunc, errorFunc) {
             axios({
                 method: method,
-                url: process.env.VUE_APP_API_HOST + "/api/data",
+                url: process.env.VUE_APP_API_HOST + url,
                 data: JSON.stringify(body)
             })
                 .then((resp) => {
