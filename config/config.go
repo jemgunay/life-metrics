@@ -24,6 +24,7 @@ type Influx struct {
 type Monzo struct {
 	ClientID     string
 	ClientSecret string
+	RedirectHost string
 }
 
 // New initialises a Config from environment variables.
@@ -39,6 +40,7 @@ func New() Config {
 		Monzo: Monzo{
 			ClientID:     getEnvVar("MONZO_CLIENT_ID", ""),
 			ClientSecret: getEnvVar("MONZO_CLIENT_SECRET", ""),
+			RedirectHost: getEnvVar("MONZO_REDIRECT_HOST", "http://localhost:8080"),
 		},
 	}
 }
