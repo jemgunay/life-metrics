@@ -28,14 +28,14 @@ type Monzo struct {
 }
 
 // New initialises the Monzo source and manages auth token refreshing.
-func New(conf config.Config, exporter sources.Exporter) *Monzo {
+func New(conf config.Monzo, exporter sources.Exporter) *Monzo {
 	m := &Monzo{
 		authRefreshedChan: make(chan authAccessDetails, 1),
 		collectionChan:    make(chan sources.Period),
 		currentAuth: authAccessDetails{
-			ClientID: conf.MonzoClientID,
+			ClientID: conf.ClientID,
 		},
-		clientSecret: conf.MonzoClientSecret,
+		clientSecret: conf.ClientSecret,
 	}
 
 	// start polling for oauth initial, oauth refresh and collection requests

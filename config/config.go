@@ -8,22 +8,38 @@ import (
 
 // Config is the service config.
 type Config struct {
-	Port              int
-	InfluxHost        string
-	InfluxToken       string
-	MonzoClientID     string
-	MonzoClientSecret string
+	Port   int
+	Influx Influx
+	Monzo  Monzo
+}
+
+// Influx contains the InfluxDB config.
+type Influx struct {
+	Host  string
+	Token string
+	Org   string
+}
+
+// Monzo contains the Monzo source config.
+type Monzo struct {
+	ClientID     string
+	ClientSecret string
 }
 
 // New initialises a Config from environment variables.
 func New() Config {
 	// attempt to get config environment vars, or default them
 	return Config{
-		Port:              getEnvVarInt("PORT", 8080),
-		InfluxHost:        getEnvVar("INFLUX_HOST", "http://localhost:8086"),
-		InfluxToken:       getEnvVar("INFLUX_TOKEN", ""),
-		MonzoClientID:     getEnvVar("MONZO_CLIENT_ID", ""),
-		MonzoClientSecret: getEnvVar("MONZO_CLIENT_SECRET", ""),
+		Port: getEnvVarInt("PORT", 8080),
+		Influx: Influx{
+			Host:  getEnvVar("INFLUX_HOST", "http://localhost:8086"),
+			Token: getEnvVar("INFLUX_TOKEN", ""),
+			Org:   getEnvVar("INFLUX_ORG", ""),
+		},
+		Monzo: Monzo{
+			ClientID:     getEnvVar("MONZO_CLIENT_ID", ""),
+			ClientSecret: getEnvVar("MONZO_CLIENT_SECRET", ""),
+		},
 	}
 }
 
