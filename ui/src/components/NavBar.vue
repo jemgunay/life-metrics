@@ -34,5 +34,6 @@ export default {
 <style scoped>
 .navbar {
     border-bottom: 1px solid rgba(0,0,0,.125);
+    font-family: 'Pacifico', cursive;
 }
 </style>

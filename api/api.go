@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -54,7 +55,14 @@ func (a API) Handler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	// get today's submitted day log data
 	case http.MethodGet:
-		data, err := a.influxRequester.ReadDayLog(time.Now())
+		date, err := extractDateQuery(r)
+		if err != nil {
+			log.Printf("failed to process date query: %s", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		data, err := a.influxRequester.ReadDayLog(date)
 		if err != nil {
 			log.Printf("failed to query influx: %s", err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -102,6 +110,20 @@ func (a API) Handler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func extractDateQuery(r *http.Request) (time.Time, error) {
+	date := r.URL.Query().Get("date")
+	if date == "" {
+		return time.Time{}, errors.New("no date query provided")
+	}
+
+	parsedDate, err := time.Parse(time.RFC3339, date)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("failed to parse date as RFC3339: %s", err)
+	}
+
+	return parsedDate, nil
+}
+
 func decodeBody(r *http.Request) (dayLogRequest, error) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -111,6 +133,10 @@ func decodeBody(r *http.Request) (dayLogRequest, error) {
 	req := dayLogRequest{}
 	if err := json.Unmarshal(body, &req); err != nil {
 		return dayLogRequest{}, fmt.Errorf("failed to JSON decode body: %s", err)
+	}
+
+	if req.Date.IsZero() {
+		return dayLogRequest{}, fmt.Errorf("invalid date provided: %s", req.Date)
 	}
 
 	return req, nil
@@ -133,21 +159,21 @@ func newFieldSet(notes string) fieldSet {
 	}
 }
 
-// addInt adds an int field to the fieldSet, updating the score.
+// addInt adds an int field to the fieldSet, updating the score (maximum of 10).
 func (f *fieldSet) addInt(name string, value int) {
 	f.fields[name] = value
 	f.scoreValue += value
 	f.scoreMax += 10
 }
 
-// addBool adds a bool field to the fieldSet, updating the score.
+// addBool adds a bool field to the fieldSet, updating the score (maps false/true to 0/10).
 func (f *fieldSet) addBool(name string, value bool) {
 	f.fields[name] = false
 	if value {
 		f.fields[name] = true
-		f.scoreValue++
+		f.scoreValue += 10
 	}
-	f.scoreMax++
+	f.scoreMax += 10
 }
 
 // calcHealth calculates the health score from the total and max field scores and adds it to the fieldSet.
