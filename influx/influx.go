@@ -11,13 +11,11 @@ import (
 	influxdbapi "github.com/influxdata/influxdb-client-go/v2/api"
 	"github.com/influxdata/influxdb-client-go/v2/api/write"
 
+	"github.com/jemgunay/life-metrics/config"
 	"github.com/jemgunay/life-metrics/sources"
 )
 
-const (
-	org    = "***REMOVED***"
-	bucket = "life-metrics"
-)
+const bucket = "life-metrics"
 
 // Requester is used to write to and query influx.
 type Requester struct {
@@ -26,11 +24,11 @@ type Requester struct {
 }
 
 // New returns an initialised influx requester.
-func New(influxHost, authToken string) Requester {
-	client := influxdb2.NewClient(influxHost, authToken)
+func New(conf config.Influx) Requester {
+	client := influxdb2.NewClient(conf.Token, conf.Token)
 	return Requester{
-		writeClient: client.WriteAPIBlocking(org, bucket),
-		readClient:  client.QueryAPI(org),
+		writeClient: client.WriteAPIBlocking(conf.Org, bucket),
+		readClient:  client.QueryAPI(conf.Org),
 	}
 }
 

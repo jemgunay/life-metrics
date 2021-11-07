@@ -13,29 +13,32 @@ import (
 	"github.com/jemgunay/life-metrics/sources/monzo"
 )
 
+type collectRequest struct {
+	reset bool
+}
+
 func main() {
 	conf := config.New()
 
 	// influx storage
-	influxRequester := influx.New(conf.InfluxHost, conf.InfluxToken)
+	influxRequester := influx.New(conf.Influx)
 
 	// configure data sources
-	monzoSource := monzo.New(conf, influxRequester)
+	monzoSource := monzo.New(conf.Monzo, influxRequester)
 	dataSources := []sources.Source{
 		monzoSource,
 	}
 
 	// poll and scrape data from sources at fixed interval
-	pollChan := make(chan bool, 1)
+	pollChan := make(chan collectRequest, 1)
 	go func() {
-		for reset := range pollChan {
-			// TODO: allow specify manual range & source name in request for force range collections
+		for req := range pollChan {
 			endTime := time.Now().UTC()
 
 			// perform source collection
 			for _, source := range dataSources {
 				var startTime time.Time
-				if reset {
+				if req.reset {
 					startTime = time.Date(2000, 0, 0, 0, 0, 0, 0, time.UTC)
 				} else {
 					var err error
@@ -59,9 +62,16 @@ func main() {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
 		}
-		reset := r.URL.Query().Get("reset") == "true"
-		// TODO: url query for start/end/source name
-		pollChan <- reset
+
+		req := collectRequest{
+			reset: r.URL.Query().Get("reset") == "true",
+		}
+
+		select {
+		case pollChan <- req:
+		default:
+			w.WriteHeader(http.StatusTooManyRequests)
+		}
 	})
 	http.HandleFunc("/api/auth/monzo", monzoSource.AuthenticateHandler)
 	http.HandleFunc("/health", healthHandler)
