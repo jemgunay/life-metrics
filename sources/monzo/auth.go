@@ -26,7 +26,7 @@ func (m *Monzo) AuthenticateHandler(w http.ResponseWriter, r *http.Request) {
 	if code == "" {
 		q := url.Values{}
 		q.Set("client_id", m.currentAuth.ClientID)
-		q.Set("redirect_uri", "http://localhost:8080/api/auth/monzo")
+		q.Set("redirect_uri",  m.redirectURL)
 		q.Set("response_type", "code")
 		authURL := "https://auth.monzo.com?" + q.Encode()
 
@@ -51,7 +51,7 @@ func (m *Monzo) fetchAccessToken(code string, requestType int) {
 	if requestType == accessCodeInitial {
 		// first access token request
 		form.Set("grant_type", "authorization_code")
-		form.Set("redirect_uri", "http://localhost:8080/api/auth/monzo")
+		form.Set("redirect_uri", m.redirectURL)
 		form.Set("code", code)
 	} else {
 		// refresh access token request

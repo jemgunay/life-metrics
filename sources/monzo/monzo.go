@@ -23,6 +23,7 @@ var httpClient = &http.Client{
 type Monzo struct {
 	currentAuth       authAccessDetails
 	clientSecret      string
+	redirectURL       string
 	authRefreshedChan chan authAccessDetails
 	collectionChan    chan sources.Period
 }
@@ -36,6 +37,7 @@ func New(conf config.Monzo, exporter sources.Exporter) *Monzo {
 			ClientID: conf.ClientID,
 		},
 		clientSecret: conf.ClientSecret,
+		redirectURL: conf.RedirectHost + "/api/auth/monzo",
 	}
 
 	// start polling for oauth initial, oauth refresh and collection requests
