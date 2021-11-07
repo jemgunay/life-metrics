@@ -1,5 +1,6 @@
 # Binaries for programs and plugins
 *.exe
+*.bat
 *.exe~
 *.dll
 *.so
@@ -11,7 +12,9 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
-# editor
-.idea
+# Dependency directories (remove the comment below to include it)
+# vendor/
 
-life-metrics
+# IntelliJ IDEA
+.IDEA
+*.IML
