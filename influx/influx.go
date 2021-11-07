@@ -25,7 +25,7 @@ type Requester struct {
 
 // New returns an initialised influx requester.
 func New(conf config.Influx) Requester {
-	client := influxdb2.NewClient(conf.Token, conf.Token)
+	client := influxdb2.NewClient(conf.Host, conf.Token)
 	return Requester{
 		writeClient: client.WriteAPIBlocking(conf.Org, bucket),
 		readClient:  client.QueryAPI(conf.Org),
