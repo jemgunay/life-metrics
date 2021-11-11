@@ -166,6 +166,14 @@ func (f *fieldSet) addInt(name string, value int) {
 	f.scoreMax += 10
 }
 
+// addIntInvert subtracts the int from the max possible and adds the int field to the fieldSet, updating the score
+// (maximum of 10).
+func (f *fieldSet) addIntInvert(name string, value int) {
+	f.fields[name] = 10 - value
+	f.scoreValue += 10 - value
+	f.scoreMax += 10
+}
+
 // addBool adds a bool field to the fieldSet, updating the score (maps false/true to 0/10).
 func (f *fieldSet) addBool(name string, value bool) {
 	f.fields[name] = false
@@ -191,7 +199,7 @@ func (a API) processDayLog(req dayLogRequest) error {
 	res.addInt("general_mood", req.Metrics.GeneralMood)
 	res.addInt("diet_quality", req.Metrics.DietQuality)
 	res.addInt("water_intake", req.Metrics.WaterIntake)
-	res.addInt("caffeine_intake", req.Metrics.CaffeineIntake)
+	res.addIntInvert("caffeine_intake", req.Metrics.CaffeineIntake)
 	res.addBool("exercise", req.Metrics.Exercise)
 	res.addBool("meditation", req.Metrics.Meditation)
 	res.calcHealth()

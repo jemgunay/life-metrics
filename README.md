@@ -6,7 +6,7 @@ Life metrics is a service for collecting daily health metrics and scraping perso
 
 ## Run
 
-Configure the env vars defined in `scripts/env-setup.sh` then run:
+Configure the env vars defined in `config/env-setup.sh` then run:
 
 ```bash
 go run life-metrics.go

@@ -16,10 +16,15 @@
                             </div>
                         </div>
 
+
                         <div class="form-group col-md-6">
                             <label for="log-date-input">Log Date</label>
-                            <input type="date" class="form-control" id="log-date-input" v-model="logDate"
-                                   v-on:change="getDayLog">
+                            <div class="input-group mb-3">
+                                <input type="date" class="form-control" id="log-date-input" v-model="logDate" v-on:change="getDayLog">
+                                <div class="input-group-append">
+                                    <button class="btn btn-outline-secondary" type="button" v-on:click="resetDate">Today</button>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="form-group col-md-6">
@@ -86,7 +91,7 @@ export default {
         return {
             alertIndicator: "",
             alertMessage: "",
-            logDate: (new Date()).toISOString().slice(0, 10),
+            logDate: "",
             logMetrics: {
                 "general_mood": 5,
                 "diet_quality": 5,
@@ -103,12 +108,22 @@ export default {
         // store a copy of the metrics defaults for form resetting
         this.logMetricsDefaults = this.logMetrics;
         // determine if log has been submitted today already
-        this.getDayLog();
+        this.resetDate();
     },
     methods: {
         setBanner(state, msg) {
             this.alertIndicator = state;
             this.alertMessage = msg;
+        },
+
+        resetDate() {
+            let newLogDate = (new Date()).toISOString().slice(0, 10);
+            // only get day log data if the date has changed
+            if (newLogDate === this.logDate) {
+                return;
+            }
+            this.logDate = newLogDate;
+            this.getDayLog();
         },
 
         getDayLog() {
@@ -117,6 +132,8 @@ export default {
             this.performDayLogRequest("/api/data/daylog?date=" + date, "GET", "", (data) => {
                 if (data["submitted"] === true) {
                     this.logMetrics = data["metrics"];
+                    // invert caffeine (lower the better)
+                    this.logMetrics["caffeine_intake"] = 10 - this.logMetrics["caffeine_intake"];
                     this.logNotes = data["notes"];
 
                     this.setBanner("success", "Day log completed for the selected day.");
@@ -146,8 +163,8 @@ export default {
             }
             let reqBody = {
                 "date": this.logDate + "T00:00:00Z",
-                "notes": this.logNotes,
                 "metrics": this.logMetrics,
+                "notes": this.logNotes
             };
 
             this.performDayLogRequest("/api/data/daylog", "POST", reqBody, () => {
