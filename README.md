@@ -6,7 +6,7 @@ Life metrics is a service for collecting daily health metrics and scraping perso
 
 ## Run
 
-Configure the env vars defined in `scripts/env-setup.sh` then run:
+Configure the env vars defined in `config/env-setup.sh` then run:
 
 ```bash
 go run life-metrics.go
@@ -55,6 +55,7 @@ OAuth2 authentication endpoints:
 
 ## TODO
 
+* Invert caffeine score
 * Document status on source pages (i.e. required auth setup)
 * Refresh per source API & ability to refresh for specified time range
 * Firebase for persisting OAuth tokens on restart
