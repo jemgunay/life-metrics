@@ -118,7 +118,7 @@ export default {
 
         resetDate() {
             let newLogDate = (new Date()).toISOString().slice(0, 10);
-            // only ge tday log data if the date has changed
+            // only get day log data if the date has changed
             if (newLogDate === this.logDate) {
                 return;
             }
@@ -132,6 +132,8 @@ export default {
             this.performDayLogRequest("/api/data/daylog?date=" + date, "GET", "", (data) => {
                 if (data["submitted"] === true) {
                     this.logMetrics = data["metrics"];
+                    // invert caffeine (lower the better)
+                    this.logMetrics["caffeine_intake"] = 10 - this.logMetrics["caffeine_intake"];
                     this.logNotes = data["notes"];
 
                     this.setBanner("success", "Day log completed for the selected day.");
@@ -161,8 +163,8 @@ export default {
             }
             let reqBody = {
                 "date": this.logDate + "T00:00:00Z",
-                "notes": this.logNotes,
                 "metrics": this.logMetrics,
+                "notes": this.logNotes
             };
 
             this.performDayLogRequest("/api/data/daylog", "POST", reqBody, () => {

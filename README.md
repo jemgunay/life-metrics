@@ -55,7 +55,6 @@ OAuth2 authentication endpoints:
 
 ## TODO
 
-* Invert caffeine score
 * Document status on source pages (i.e. required auth setup)
 * Refresh per source API & ability to refresh for specified time range
 * Firebase for persisting OAuth tokens on restart
