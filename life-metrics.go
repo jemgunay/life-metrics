@@ -28,7 +28,7 @@ func main() {
 	influxRequester := influx.New(conf.Influx)
 
 	// configure data sources
-	monzoSource := monzo.New(conf.Monzo, influxRequester)
+	monzoSource := monzo.New(conf, influxRequester)
 	dataSources := []sources.Source{
 		monzoSource,
 	}
@@ -38,11 +38,12 @@ func main() {
 		for req := range scrapeChan {
 			endTime := time.Now().UTC()
 
-			// perform source collection
+			// perform collection for each source
 			for _, source := range dataSources {
 				var startTime time.Time
 				if req.reset {
 					startTime = time.Date(2000, 0, 0, 0, 0, 0, 0, time.UTC)
+
 				} else {
 					var err error
 					startTime, err = influxRequester.LastTimestampByMeasurement(source.Name())
@@ -50,6 +51,8 @@ func main() {
 						log.Printf("failed to get last timestamp for source %s: %s", source.Name(), err)
 						continue
 					}
+					// add a second to ensure we don't recollect the last record
+					startTime = startTime.Add(time.Second)
 				}
 
 				source.Collect(sources.NewPeriod(startTime, endTime))

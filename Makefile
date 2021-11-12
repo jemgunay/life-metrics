@@ -1,3 +1,8 @@
+.PHONY: local
+local:
+	cd ui && npm install dotenv-webpack --save-dev
+	echo 'VUE_APP_API_HOST=http://localhost:8080' > ui/.env.local
+
 .PHONY: lint-go
 lint-go:
 	golint ./... | grep -v "vendor/"

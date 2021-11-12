@@ -21,23 +21,25 @@ var httpClient = &http.Client{
 
 // Monzo represents the Monzo collection source.
 type Monzo struct {
-	currentAuth       authAccessDetails
-	clientSecret      string
-	redirectURL       string
-	authRefreshedChan chan authAccessDetails
-	collectionChan    chan sources.Period
+	currentAuth        authAccessDetails
+	clientSecret       string
+	serviceRedirectURL string
+	webAppRedirectURL  string
+	authRefreshedChan  chan authAccessDetails
+	collectionChan     chan sources.Period
 }
 
 // New initialises the Monzo source and manages auth token refreshing.
-func New(conf config.Monzo, exporter sources.Exporter) *Monzo {
+func New(conf config.Config, exporter sources.Exporter) *Monzo {
 	m := &Monzo{
 		authRefreshedChan: make(chan authAccessDetails, 1),
 		collectionChan:    make(chan sources.Period),
 		currentAuth: authAccessDetails{
-			ClientID: conf.ClientID,
+			ClientID: conf.Monzo.ClientID,
 		},
-		clientSecret: conf.ClientSecret,
-		redirectURL: conf.RedirectHost + "/api/auth/monzo",
+		clientSecret:       conf.Monzo.ClientSecret,
+		serviceRedirectURL: conf.ServiceHost + "/api/auth/monzo",
+		webAppRedirectURL:  conf.WebAppHost + "/sources",
 	}
 
 	// start polling for oauth initial, oauth refresh and collection requests
@@ -224,7 +226,6 @@ func (m *Monzo) getTransactions(accountID string, start, end time.Time) (transac
 	q.Set("before", end.Format(time.RFC3339))
 	// enrich transaction with merchant data
 	q.Set("expand[]", "merchant")
-	fmt.Println(q.Encode())
 
 	req, err := http.NewRequest(http.MethodGet, "https://api.monzo.com/transactions?"+q.Encode(), nil)
 	if err != nil {
