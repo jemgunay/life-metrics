@@ -4,6 +4,12 @@
 
 Life metrics is a service for collecting daily health metrics and scraping personal data from third party APIs. Collected data is persisted to InfluxDB and visualised in Grafana.  
 
+<p align="center">
+  <img src="/screenshots/screenshot_1.png" width="30%"/>
+  <img src="/screenshots/screenshot_2.png" width="30%"/>
+  <img src="/screenshots/screenshot_3.png" width="30%"/>
+</p>
+
 ## Run
 
 Configure the env vars defined in `config/env-setup.sh` then run:
@@ -19,7 +25,7 @@ go run life-metrics.go
 ### Implemented Sources
 
 * Day log form
-* Monzo ("Eating Out" category)
+* Monzo ("Eating Out" category transactions)
 
 ### Day Log Endpoint
 
@@ -57,7 +63,7 @@ OAuth2 authentication endpoints:
 
 ## TODO
 
-* Document status on source pages (i.e. required auth setup)
+* Add Vue CI lint & build
 * Refresh per source API & ability to refresh for specified time range
 * Firebase for persisting OAuth tokens on restart
 * General API/web app authentication
