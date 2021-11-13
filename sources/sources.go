@@ -8,9 +8,12 @@ type Source interface {
 	Name() string
 	// Collect collects data for a given time period.
 	Collect(period Period)
-	// Shutdown shuts down the source.
-	Shutdown()
+	// StateSet returns current source state to be displayed on the sources page.
+	State() StateSet
 }
+
+// StateSet represents the current running state of a source - this is used by the sources page.
+type StateSet map[string]interface{}
 
 // Exporter defines the contract for writing data to be persisted outside of the service, e.g. InfluxDB.
 type Exporter interface {

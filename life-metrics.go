@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"strconv"
@@ -13,14 +14,6 @@ import (
 	"github.com/jemgunay/life-metrics/sources/monzo"
 )
 
-// collectRequest specifies collection details.
-type collectRequest struct {
-	reset bool
-}
-
-// scrapeChan serialises collection requests into the poller.
-var scrapeChan = make(chan collectRequest, 1)
-
 func main() {
 	conf := config.New()
 
@@ -29,41 +22,21 @@ func main() {
 
 	// configure data sources
 	monzoSource := monzo.New(conf, influxRequester)
-	dataSources := []sources.Source{
-		monzoSource,
+	p := poller{
+		sources: []sources.Source{
+			monzoSource,
+		},
+		scrapeChan: make(chan collectRequest, 1),
 	}
 
-	// poll and scrape data from sources at fixed interval
-	go func() {
-		for req := range scrapeChan {
-			endTime := time.Now().UTC()
-
-			// perform collection for each source
-			for _, source := range dataSources {
-				var startTime time.Time
-				if req.reset {
-					startTime = time.Date(2000, 0, 0, 0, 0, 0, 0, time.UTC)
-
-				} else {
-					var err error
-					startTime, err = influxRequester.LastTimestampByMeasurement(source.Name())
-					if err != nil {
-						log.Printf("failed to get last timestamp for source %s: %s", source.Name(), err)
-						continue
-					}
-					// add a second to ensure we don't recollect the last record
-					startTime = startTime.Add(time.Second)
-				}
-
-				source.Collect(sources.NewPeriod(startTime, endTime))
-			}
-		}
-	}()
+	// start collection poller
+	go p.start(influxRequester)
 
 	// define handlers
 	apiHandler := api.New(influxRequester).Handler
 	http.HandleFunc("/api/data/daylog", enableCORS(apiHandler))
-	http.HandleFunc("/api/data/collect", enableCORS(collectHandler))
+	http.HandleFunc("/api/data/collect", enableCORS(p.collectHandler))
+	http.HandleFunc("/api/data/sources", enableCORS(p.sourcesHandler))
 	http.HandleFunc("/api/auth/monzo", monzoSource.AuthenticateHandler)
 	http.HandleFunc("/health", healthHandler)
 
@@ -72,7 +45,45 @@ func main() {
 	log.Printf("HTTP server shut down: %s", err)
 }
 
-func collectHandler(w http.ResponseWriter, r *http.Request) {
+// collectRequest specifies collection details.
+type collectRequest struct {
+	reset bool
+}
+
+// poller serialises access to source operations.
+type poller struct {
+	sources    []sources.Source
+	scrapeChan chan collectRequest
+}
+
+// start polls for scrape requests and performs collections for each source.
+func (p poller) start(influxRequester influx.Requester) {
+	for req := range p.scrapeChan {
+		endTime := time.Now().UTC()
+
+		// perform collection for each source
+		for _, source := range p.sources {
+			var startTime time.Time
+			if req.reset {
+				startTime = time.Date(2000, 0, 0, 0, 0, 0, 0, time.UTC)
+
+			} else {
+				var err error
+				startTime, err = influxRequester.LastTimestampByMeasurement(source.Name())
+				if err != nil {
+					log.Printf("failed to get last timestamp for source %s: %s", source.Name(), err)
+					continue
+				}
+				// add a second to ensure we don't recollect the last record
+				startTime = startTime.Add(time.Second)
+			}
+
+			source.Collect(sources.NewPeriod(startTime, endTime))
+		}
+	}
+}
+
+func (p poller) collectHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -83,11 +94,27 @@ func collectHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	select {
-	case scrapeChan <- req:
+	case p.scrapeChan <- req:
 		w.WriteHeader(http.StatusAccepted)
 	default:
 		w.WriteHeader(http.StatusTooManyRequests)
 	}
+}
+
+func (p poller) sourcesHandler(w http.ResponseWriter, r *http.Request) {
+	resp := make(map[string]sources.StateSet, len(p.sources))
+	for _, source := range p.sources {
+		resp[source.Name()] = source.State()
+	}
+
+	b, err := json.Marshal(resp)
+	if err != nil {
+		log.Printf("failed to JSON marshal source state: %s", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Write(b)
 }
 
 var startTimestamp = time.Now().UTC().Format(time.RFC3339)

@@ -95,3 +95,38 @@ func (m *Monzo) fetchAccessToken(code string, requestType int) error {
 	m.authRefreshedChan <- authCallback
 	return nil
 }
+
+// isAuthenticated determines if the Monzo source client is fully authenticated (email & app approved).
+func (m *Monzo) isAuthenticated() (bool, error) {
+	req, err := http.NewRequest(http.MethodGet, "https://api.monzo.com/ping/whoami", nil)
+	if err != nil {
+		return false, fmt.Errorf("failed to create authenticated request: %s", err)
+	}
+	req.Header.Add("Authorization", "Bearer "+m.currentAuth.AccessToken)
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return false, fmt.Errorf("failed to perform authenticated request: %s", err)
+	}
+
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return false, fmt.Errorf("failed to read authenticated response body: %s", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return false, fmt.Errorf("non-200 status for authenticated request: %s, body: %s", resp.Status, b)
+	}
+
+	var fields map[string]interface{}
+	if err := json.Unmarshal(b, &fields); err != nil {
+		return false, fmt.Errorf("failed to JSON decode authenticated response body: %s, %s", err, b)
+	}
+
+	authenticated, ok := fields["authenticated"].(bool)
+	if !ok {
+		return false, fmt.Errorf("failed to extract authenticated field as bool: %s, %v", err, fields)
+	}
+
+	return authenticated, nil
+}

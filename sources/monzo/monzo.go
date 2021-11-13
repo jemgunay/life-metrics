@@ -254,6 +254,14 @@ func (m *Monzo) getTransactions(accountID string, start, end time.Time) (transac
 	return transactions, nil
 }
 
-// Shutdown does nothing for this module.
-func (m *Monzo) Shutdown() {
+// State returns the Monzo running state.
+func (m *Monzo) State() sources.StateSet {
+	authenticated, err := m.isAuthenticated()
+	if err != nil {
+		log.Printf("failed to fetch Monzo authentication state: %s", err)
+	}
+
+	return map[string]interface{}{
+		"authenticated": authenticated,
+	}
 }
