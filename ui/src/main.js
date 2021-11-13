@@ -24,12 +24,11 @@ const router = createRouter({
     routes: routes
 });
 
-
 import { library } from "@fortawesome/fontawesome-svg-core";
-import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
+import { faCheckCircle, faTimesCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 
-library.add(faInfoCircle);
+library.add(faCheckCircle, faTimesCircle);
 
 createApp(App).use(router).component("font-awesome-icon", FontAwesomeIcon).mount("#app");
 

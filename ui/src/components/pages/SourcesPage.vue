@@ -28,9 +28,22 @@
             <div class="card">
                 <h5 class="card-header">Monzo</h5>
                 <div class="card-body">
-                    <a :href="apiHost + '/api/auth/monzo'" target="_blank">Click to authenticate
-                        Monzo.</a>
-                    <p class="mb-0">Ensure to approve the email and the app notification.</p>
+                    <div v-if="sourceState['monzo']['authenticated']">
+                        <p class="mb-0">
+                            Monzo client authenticated.
+                            <font-awesome-icon icon="check-circle" class="text-success"/>
+                        </p>
+                    </div>
+                    <div v-else>
+                        <p>
+                            Monzo client not authenticated.
+                            <font-awesome-icon icon="times-circle" class="text-danger"/>
+                        </p>
+                        <p class="mb-0">
+                            <a :href="apiHost + '/api/auth/monzo'" target="_blank">Click to authenticate Monzo.</a>
+                            Ensure to approve the email and the app notification.
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -47,13 +60,36 @@ export default {
             apiHost: process.env.VUE_APP_API_HOST,
             alertIndicator: "",
             alertMessage: "",
-
+            sourceState: {
+                "monzo": {
+                    "authenticated": false
+                }
+            },
         };
+    },
+    mounted() {
+        this.performSourceStateRequest();
     },
     methods: {
         setBanner(state, msg) {
             this.alertIndicator = state;
             this.alertMessage = msg;
+        },
+
+        performSourceStateRequest() {
+            this.setBanner();
+
+            axios({
+                method: "GET",
+                url: process.env.VUE_APP_API_HOST + "/api/data/sources"
+            })
+                .then((resp) => {
+                    this.sourceState = resp.data;
+                })
+                .catch((error) => {
+                    this.setBanner("danger", "Source state request failed! " + error);
+                    console.error(error);
+                });
         },
 
         performCollectRequest() {

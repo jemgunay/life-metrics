@@ -96,7 +96,7 @@ export default {
                 "general_mood": 5,
                 "diet_quality": 5,
                 "water_intake": 5,
-                "caffeine_intake": 5,
+                "caffeine_intake": 1,
                 "exercise": false,
                 "meditation": false
             },
