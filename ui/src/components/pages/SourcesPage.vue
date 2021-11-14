@@ -27,22 +27,25 @@
         <div class="col-md-6">
             <div class="card">
                 <h5 class="card-header">Monzo</h5>
-                <div class="card-body">
-                    <div v-if="sourceState['monzo']['authenticated']">
-                        <p class="mb-0">
+                <div class="card-body pb-0">
+                    <div v-if="sourceState['monzo']['authenticated'] === true">
+                        <p>
                             Monzo client authenticated.
                             <font-awesome-icon icon="check-circle" class="text-success"/>
                         </p>
                     </div>
-                    <div v-else>
+                    <div v-else-if="sourceState['monzo']['authenticated'] === false">
                         <p>
                             Monzo client not authenticated.
                             <font-awesome-icon icon="times-circle" class="text-danger"/>
                         </p>
-                        <p class="mb-0">
+                        <p>
                             <a :href="apiHost + '/api/auth/monzo'" target="_blank">Click to authenticate Monzo.</a>
                             Ensure to approve the email and the app notification.
                         </p>
+                    </div>
+                    <div v-else-if="alertIndicator === 'danger'">
+                        <p>Error fetching Monzo state.</p>
                     </div>
                 </div>
             </div>
@@ -61,10 +64,8 @@ export default {
             alertIndicator: "",
             alertMessage: "",
             sourceState: {
-                "monzo": {
-                    "authenticated": false
-                }
-            },
+                "monzo": {}
+            }
         };
     },
     mounted() {

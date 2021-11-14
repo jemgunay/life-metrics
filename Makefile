@@ -1,5 +1,6 @@
 .PHONY: local
 local:
+	npm install --legacy-peer-deps
 	cd ui && npm install dotenv-webpack --save-dev
 	echo 'VUE_APP_API_HOST=http://localhost:8080' > ui/.env.local
 
