@@ -174,14 +174,14 @@ func (f *fieldSet) addIntInvert(name string, value int) {
 	f.scoreMax += 10
 }
 
-// addBool adds a bool field to the fieldSet, updating the score (maps false/true to 0/10).
+// addBool adds a bool field to the fieldSet, updating the score (maps false/true to 0/5).
 func (f *fieldSet) addBool(name string, value bool) {
 	f.fields[name] = false
 	if value {
 		f.fields[name] = true
-		f.scoreValue += 10
+		f.scoreValue += 5
 	}
-	f.scoreMax += 10
+	f.scoreMax += 5
 }
 
 // calcHealth calculates the health score from the total and max field scores and adds it to the fieldSet.

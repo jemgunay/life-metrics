@@ -5,9 +5,9 @@
 Life metrics is a service for collecting daily health metrics and scraping personal data from third party APIs. Collected data is persisted to InfluxDB and visualised in Grafana.  
 
 <p align="center">
-  <img src="/screenshots/screenshot_1.png" width="30%"/>
-  <img src="/screenshots/screenshot_2.png" width="30%"/>
-  <img src="/screenshots/screenshot_3.png" width="30%"/>
+  <img src="images/screenshot_1.png" width="30%"/>
+  <img src="images/screenshot_2.png" width="30%"/>
+  <img src="images/screenshot_3.png" width="30%"/>
 </p>
 
 ## Run
@@ -20,14 +20,18 @@ make local
 go run life-metrics.go
 ```
 
-## Data Sources
+## Implementation
 
-### Implemented Sources
+<img src="images/diagram.png" width="30%"/>
+
+### Data Sources
 
 * Day log form
 * Monzo ("Eating Out" category transactions)
 
-### Day Log Endpoint
+### Endpoints
+
+#### Day Log Endpoint
 
 The day log endpoint is responsible for submitting day log data and for retrieving submitted day logs.
 
@@ -41,7 +45,7 @@ curl -i "http//localhost:8080/api/data/daylog?date=2021-11-07T00:00:00Z" -XGET
 curl -i "http//localhost:8080/api/data/daylog" -XPOST -d '{"date":"2021-11-07T00:00:00Z","notes":"","metrics":{"general_mood":7,"diet_quality":3,"water_intake":4,"caffeine_intake":0,"exercise":false,"meditation":false}}'
 ```
 
-### Collect Endpoint
+#### Collect Endpoint
 
 The collect endpoint triggers a data collection for all sources. Collected data is then written to InfluxDB. Collection is triggered every 6 hours by the Google Cloud Scheduler.  
 
@@ -55,7 +59,7 @@ curl -i "http://localhost:8080/api/data/collect" -XPOST
 curl -i "http://localhost:8080/api/data/collect?reset=true" -XPOST
 ```
 
-### Auth Endpoints
+#### Auth Endpoints
 
 OAuth2 authentication endpoints:
 
