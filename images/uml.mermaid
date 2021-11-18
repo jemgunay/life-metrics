@@ -1,0 +1,4 @@
+graph TD
+    LifeMetrics["Life Metrics"] ---> MonzoAPI["Monzo API"]
+    LifeMetrics --> |Write|InfluxDB
+    Grafana --> |Query|InfluxDB
