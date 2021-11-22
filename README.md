@@ -22,7 +22,7 @@ go run life-metrics.go
 
 ## Implementation
 
-<img src="images/diagram.png" width="30%"/>
+<img src="images/architecture.svg" width="50%"/>
 
 ### Data Sources
 
@@ -71,6 +71,8 @@ OAuth2 authentication endpoints:
 * Refresh per source API & ability to refresh for specified time range
 * Firebase for persisting OAuth tokens on restart
 * General API/web app authentication
+* Refactor Monzo Oauth refresh into scheduler call and redeploy to App Engine
+* Swagger
 * Sources
   * FitBit - exercise sessions & sleep data 
   * Canlendar - get alcohol units consumed into life-metrics and re-point canlendar service
