@@ -129,7 +129,7 @@ export default {
         getDayLog() {
             let date = this.logDate + "T00:00:00Z";
 
-            this.performDayLogRequest("/api/data/daylog?date=" + date, "GET", "", (data) => {
+            this.performDayLogRequest("/daylog/data/daylog?date=" + date, "GET", "", (data) => {
                 if (data["submitted"] === true) {
                     this.logMetrics = data["metrics"];
                     // invert caffeine (lower the better)
@@ -167,7 +167,7 @@ export default {
                 "notes": this.logNotes
             };
 
-            this.performDayLogRequest("/api/data/daylog", "POST", reqBody, () => {
+            this.performDayLogRequest("/daylog/data/daylog", "POST", reqBody, () => {
                 this.setBanner("success", "Day log submitted!");
 
             }, (error) => {

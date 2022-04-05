@@ -65,7 +65,7 @@ func (m *Monzo) fetchAccessToken(code string, requestType int) error {
 	}
 
 	// third step of oauth - exchange the temporary access code for an access token
-	req, err := http.NewRequest(http.MethodPost, "https://api.monzo.com/oauth2/token", strings.NewReader(form.Encode()))
+	req, err := http.NewRequest(http.MethodPost, "https://daylog.monzo.com/oauth2/token", strings.NewReader(form.Encode()))
 	if err != nil {
 		return fmt.Errorf("failed to create token request: %s", err)
 	}
@@ -98,7 +98,7 @@ func (m *Monzo) fetchAccessToken(code string, requestType int) error {
 
 // isAuthenticated determines if the Monzo source client is fully authenticated (email & app approved).
 func (m *Monzo) isAuthenticated() (bool, error) {
-	req, err := http.NewRequest(http.MethodGet, "https://api.monzo.com/ping/whoami", nil)
+	req, err := http.NewRequest(http.MethodGet, "https://daylog.monzo.com/ping/whoami", nil)
 	if err != nil {
 		return false, fmt.Errorf("failed to create authenticated request: %s", err)
 	}

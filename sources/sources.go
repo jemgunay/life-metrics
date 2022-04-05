@@ -2,16 +2,6 @@ package sources
 
 import "time"
 
-// Source defines the requirements for a data collection source.
-type Source interface {
-	// Name returns the name of the source.
-	Name() string
-	// Collect collects data for a given time period.
-	Collect(period Period)
-	// StateSet returns current source state to be displayed on the sources page.
-	State() StateSet
-}
-
 // StateSet represents the current running state of a source - this is used by the sources page.
 type StateSet map[string]interface{}
 

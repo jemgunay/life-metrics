@@ -38,7 +38,7 @@ func New(conf config.Config, exporter sources.Exporter) *Monzo {
 			ClientID: conf.Monzo.ClientID,
 		},
 		clientSecret:       conf.Monzo.ClientSecret,
-		serviceRedirectURL: conf.ServiceHost + "/api/auth/monzo",
+		serviceRedirectURL: conf.ServiceHost + "/daylog/auth/monzo",
 		webAppRedirectURL:  conf.WebAppHost + "/sources",
 	}
 
@@ -148,7 +148,7 @@ type account struct {
 }
 
 func (m *Monzo) getAccount() (account, error) {
-	req, err := http.NewRequest(http.MethodGet, "https://api.monzo.com/accounts", nil)
+	req, err := http.NewRequest(http.MethodGet, "https://daylog.monzo.com/accounts", nil)
 	if err != nil {
 		return account{}, fmt.Errorf("failed to create accounts request: %s", err)
 	}
@@ -227,7 +227,7 @@ func (m *Monzo) getTransactions(accountID string, start, end time.Time) (transac
 	// enrich transaction with merchant data
 	q.Set("expand[]", "merchant")
 
-	req, err := http.NewRequest(http.MethodGet, "https://api.monzo.com/transactions?"+q.Encode(), nil)
+	req, err := http.NewRequest(http.MethodGet, "https://daylog.monzo.com/transactions?"+q.Encode(), nil)
 	if err != nil {
 		return transactions, fmt.Errorf("failed to create accounts request: %s", err)
 	}

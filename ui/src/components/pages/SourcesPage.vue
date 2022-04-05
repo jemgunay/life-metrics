@@ -40,7 +40,7 @@
                             <font-awesome-icon icon="times-circle" class="text-danger"/>
                         </p>
                         <p>
-                            <a :href="apiHost + '/api/auth/monzo'" target="_blank">Click to authenticate Monzo.</a>
+                            <a :href="apiHost + '/daylog/auth/monzo'" target="_blank">Click to authenticate Monzo.</a>
                             Ensure to approve the email and the app notification.
                         </p>
                     </div>

@@ -7,14 +7,14 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/jemgunay/life-metrics/api"
+	"github.com/jemgunay/life-metrics/daylog"
 	"github.com/jemgunay/life-metrics/config"
 	"github.com/jemgunay/life-metrics/influx"
 	"github.com/jemgunay/life-metrics/sources"
 	"github.com/jemgunay/life-metrics/sources/monzo"
 )
 
-// TODO: start API here for local development of functions
+// TODO: start DayLog here for local development of functions
 func main() {
 	conf := config.New()
 
@@ -34,11 +34,11 @@ func main() {
 	go p.start(influxRequester)
 
 	// define handlers
-	apiHandler := api.New(influxRequester).Handler
-	http.HandleFunc("/api/data/daylog", enableCORS(apiHandler))
-	http.HandleFunc("/api/data/collect", enableCORS(p.collectHandler))
-	http.HandleFunc("/api/data/sources", enableCORS(p.sourcesHandler))
-	http.HandleFunc("/api/auth/monzo", monzoSource.AuthenticateHandler)
+	apiHandler := daylog.New(influxRequester).Handler
+	http.HandleFunc("/daylog/data/daylog", enableCORS(apiHandler))
+	http.HandleFunc("/daylog/data/collect", enableCORS(p.collectHandler))
+	http.HandleFunc("/daylog/data/sources", enableCORS(p.sourcesHandler))
+	http.HandleFunc("/daylog/auth/monzo", monzoSource.AuthenticateHandler)
 	http.HandleFunc("/health", healthHandler)
 
 	log.Printf("HTTP server starting on port %d", conf.Port)
