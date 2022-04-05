@@ -14,6 +14,7 @@ import (
 	"github.com/jemgunay/life-metrics/sources/monzo"
 )
 
+// TODO: start API here for local development of functions
 func main() {
 	conf := config.New()
 
