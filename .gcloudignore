@@ -25,6 +25,7 @@
 *.out
 
 .idea/
+.circleci/
 ui/
 Makefile
 *.md

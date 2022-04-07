@@ -14,11 +14,13 @@ import (
 	"github.com/jemgunay/life-metrics/influx"
 )
 
-var apiHandler daylog.DayLog
+var (
+	apiHandler daylog.DayLog
+	Conf = config.New()
+)
 
 func init() {
-	conf := config.New()
-	influxRequester := influx.New(conf.Influx)
+	influxRequester := influx.New(Conf.Influx)
 	apiHandler = daylog.New(influxRequester)
 }
 

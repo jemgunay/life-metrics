@@ -1,121 +1,22 @@
 package main
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
 	"strconv"
 	"time"
 
-	"github.com/jemgunay/life-metrics/daylog"
-	"github.com/jemgunay/life-metrics/config"
-	"github.com/jemgunay/life-metrics/influx"
-	"github.com/jemgunay/life-metrics/sources"
-	"github.com/jemgunay/life-metrics/sources/monzo"
+	functions "github.com/jemgunay/life-metrics"
 )
 
-// TODO: start DayLog here for local development of functions
 func main() {
-	conf := config.New()
-
-	// influx storage
-	influxRequester := influx.New(conf.Influx)
-
-	// configure data sources
-	monzoSource := monzo.New(conf, influxRequester)
-	p := poller{
-		sources: []sources.Source{
-			monzoSource,
-		},
-		scrapeChan: make(chan collectRequest, 1),
-	}
-
-	// start collection poller
-	go p.start(influxRequester)
-
 	// define handlers
-	apiHandler := daylog.New(influxRequester).Handler
-	http.HandleFunc("/daylog/data/daylog", enableCORS(apiHandler))
-	http.HandleFunc("/daylog/data/collect", enableCORS(p.collectHandler))
-	http.HandleFunc("/daylog/data/sources", enableCORS(p.sourcesHandler))
-	http.HandleFunc("/daylog/auth/monzo", monzoSource.AuthenticateHandler)
+	http.HandleFunc("/daylog/data/daylog", enableCORS(functions.DayLogHandler))
 	http.HandleFunc("/health", healthHandler)
 
-	log.Printf("HTTP server starting on port %d", conf.Port)
-	err := http.ListenAndServe(":"+strconv.Itoa(conf.Port), nil)
+	log.Printf("HTTP server starting on port %d", functions.Conf.Port)
+	err := http.ListenAndServe(":"+strconv.Itoa(functions.Conf.Port), nil)
 	log.Printf("HTTP server shut down: %s", err)
-}
-
-// collectRequest specifies collection details.
-type collectRequest struct {
-	reset bool
-}
-
-// poller serialises access to source operations.
-type poller struct {
-	sources    []sources.Source
-	scrapeChan chan collectRequest
-}
-
-// start polls for scrape requests and performs collections for each source.
-func (p poller) start(influxRequester influx.Requester) {
-	for req := range p.scrapeChan {
-		endTime := time.Now().UTC()
-
-		// perform collection for each source
-		for _, source := range p.sources {
-			var startTime time.Time
-			if req.reset {
-				startTime = time.Date(2000, 0, 0, 0, 0, 0, 0, time.UTC)
-
-			} else {
-				var err error
-				startTime, err = influxRequester.LastTimestampByMeasurement(source.Name())
-				if err != nil {
-					log.Printf("failed to get last timestamp for source %s: %s", source.Name(), err)
-					continue
-				}
-				// add a second to ensure we don't recollect the last record
-				startTime = startTime.Add(time.Second)
-			}
-
-			source.Collect(sources.NewPeriod(startTime, endTime))
-		}
-	}
-}
-
-func (p poller) collectHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-
-	req := collectRequest{
-		reset: r.URL.Query().Get("reset") == "true",
-	}
-
-	select {
-	case p.scrapeChan <- req:
-		w.WriteHeader(http.StatusAccepted)
-	default:
-		w.WriteHeader(http.StatusTooManyRequests)
-	}
-}
-
-func (p poller) sourcesHandler(w http.ResponseWriter, r *http.Request) {
-	resp := make(map[string]sources.StateSet, len(p.sources))
-	for _, source := range p.sources {
-		resp[source.Name()] = source.State()
-	}
-
-	b, err := json.Marshal(resp)
-	if err != nil {
-		log.Printf("failed to JSON marshal source state: %s", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.Write(b)
 }
 
 var startTimestamp = time.Now().UTC().Format(time.RFC3339)

@@ -12,10 +12,16 @@ import (
 	"github.com/influxdata/influxdb-client-go/v2/api/write"
 
 	"github.com/jemgunay/life-metrics/config"
-	"github.com/jemgunay/life-metrics/sources"
 )
 
 const bucket = "life-metrics"
+
+// result is a generic collection dataset returned from a source.
+type Result struct {
+	Time   time.Time
+	Tags   map[string]string
+	Fields map[string]interface{}
+}
 
 // Requester is used to write to and query influx.
 type Requester struct {
@@ -33,7 +39,7 @@ func New(conf config.Influx) Requester {
 }
 
 // Write writes the provided data to influx.
-func (r Requester) Write(measurement string, results ...sources.Result) error {
+func (r Requester) Write(measurement string, results ...Result) error {
 	// no new data to store so skip writing to influx
 	if len(results) == 0 {
 		return nil

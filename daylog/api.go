@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/jemgunay/life-metrics/influx"
-	"github.com/jemgunay/life-metrics/sources"
 )
 
 // Request represents a day log creation request body.
@@ -87,7 +86,7 @@ func (d DayLog) processDayLog(req Request) error {
 	res.calcHealth()
 
 	// aggregate tags and stringify values
-	logData := sources.Result{
+	logData := influx.Result{
 		Time:   req.Date,
 		Fields: res.fields,
 	}
