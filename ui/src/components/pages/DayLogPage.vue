@@ -129,7 +129,7 @@ export default {
         getDayLog() {
             let date = this.logDate + "T00:00:00Z";
 
-            this.performDayLogRequest("/daylog/data/daylog?date=" + date, "GET", "", (data) => {
+            this.performDayLogRequest("/DayLogHandler?date=" + date, "GET", "", (data) => {
                 if (data["submitted"] === true) {
                     this.logMetrics = data["metrics"];
                     // invert caffeine (lower the better)
@@ -167,7 +167,7 @@ export default {
                 "notes": this.logNotes
             };
 
-            this.performDayLogRequest("/daylog/data/daylog", "POST", reqBody, () => {
+            this.performDayLogRequest("/DayLogHandler", "POST", reqBody, () => {
                 this.setBanner("success", "Day log submitted!");
 
             }, (error) => {
@@ -178,7 +178,7 @@ export default {
         performDayLogRequest(url, method, body, successFunc, errorFunc) {
             axios({
                 method: method,
-                url: process.env.VUE_APP_API_HOST + url,
+                url: process.env.VUE_APP_FUNC_HOST + url,
                 data: JSON.stringify(body)
             })
                 .then((resp) => {

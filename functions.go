@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"time"
 
+	_ "github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
+
 	"github.com/jemgunay/life-metrics/config"
 	"github.com/jemgunay/life-metrics/daylog"
 	"github.com/jemgunay/life-metrics/influx"
@@ -26,6 +28,8 @@ func init() {
 
 func DayLogHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("request to DayLog handler [%s] (%s) from %s", r.Method, r.URL, r.RemoteAddr)
+
+	enableCORS(w)
 
 	switch r.Method {
 	// get today's submitted day log data
@@ -71,6 +75,11 @@ func DayLogHandler(w http.ResponseWriter, r *http.Request) {
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
+}
+
+// enableCORS enables CORS for handlers that it wraps.
+func enableCORS(w http.ResponseWriter) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 }
 
 func extractDateQuery(r *http.Request) (time.Time, error) {
